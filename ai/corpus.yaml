@@ -1,0 +1,27 @@
+# IP-SAKTI corpus manifest.
+#
+# One entry per PDF. Fields here override anything the pipeline would
+# infer. Everything not listed is inferred and logged as such — run with
+# --strict once the corpus is stable so nothing is ever guessed again.
+#
+# section_effective_dates records amendments: the parent Act commenced in
+# 1972, but s.3(d) only exists in its current form from 2005. Without
+# this, the as-of filter serves the wrong law.
+
+documents:
+  - file: patents-act-1970.pdf
+    jurisdiction: india
+    instrument_type: statute
+    act_name: "The Patents Act, 1970"
+    effective_date: "1972-04-20"
+    source_url: "https://www.indiacode.nic.in/handle/123456789/1979"
+    section_effective_dates:
+      "Section 3": "2005-04-01"
+      "Section 10": "2003-05-20"
+
+  - file: wipo-gratk-2024.pdf
+    jurisdiction: international
+    instrument_type: treaty
+    act_name: "WIPO Treaty on Intellectual Property, Genetic Resources and Associated Traditional Knowledge, 2024"
+    effective_date: "2024-05-24"
+    source_url: "https://www.wipo.int/treaties/en/ip/gratk/"
