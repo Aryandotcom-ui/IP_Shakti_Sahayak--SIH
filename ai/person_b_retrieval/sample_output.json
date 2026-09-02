@@ -1,0 +1,31 @@
+{
+  "query": "Can a classical Ayurvedic formulation be patented in India?",
+  "matched_chunks": [
+    {
+      "chunk_id": "chunk_0004",
+      "text": "The Drugs and Cosmetics Act, 1940 defines a patent or proprietary medicine as an Ayurvedic, Siddha or Unani drug manufactured exclusively in accordance with the formula prescribed in the authoritative texts specified in the First Schedule.",
+      "act_name": "Drugs and Cosmetics Act, 1940",
+      "section": "3(h)",
+      "jurisdiction": "india",
+      "similarity_score": 0.2136
+    },
+    {
+      "chunk_id": "chunk_0001",
+      "text": "Section 3(p) of the Patents Act, 1970 excludes from patentability an invention which, in effect, is traditional knowledge or which is an aggregation or duplication of known properties of traditionally known component or components.",
+      "act_name": "Patents Act, 1970",
+      "section": "3(p)",
+      "jurisdiction": "india",
+      "similarity_score": 0.11
+    },
+    {
+      "chunk_id": "chunk_0003",
+      "text": "The Biological Diversity Act, 2002, as amended in 2023, requires prior approval of the National Biodiversity Authority before obtaining any intellectual property right based on research conducted using biological resources obtained from India.",
+      "act_name": "Biological Diversity Act, 2002",
+      "section": "6",
+      "jurisdiction": "india",
+      "similarity_score": 0.1055
+    }
+  ],
+  "confidence": 0.2636,
+  "should_abstain": false
+}
