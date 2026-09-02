@@ -1,0 +1,31 @@
+{
+  "query": "Can I patent a classical Ayurvedic formulation that uses neem extract?",
+  "matched_chunks": [
+    {
+      "chunk_id": "chunk_0001",
+      "text": "Section 3(p) excludes from patentability an invention which, in effect, is traditional knowledge or which is an aggregation or duplication of known properties of traditionally known component or components.",
+      "act_name": "Patents Act, 1970",
+      "section": "3(p)",
+      "jurisdiction": "india",
+      "similarity_score": 0.91
+    },
+    {
+      "chunk_id": "chunk_0007",
+      "text": "A formulation shall be considered 'classical' where its composition, proportions, and method of preparation are drawn directly from a recognised Ayurvedic text without modification, and such formulations are treated as part of the traditional knowledge corpus for the purposes of patent examination.",
+      "act_name": "Ayurveda, Siddha and Unani Drugs Technical Advisory Board Guidelines",
+      "section": "4.2",
+      "jurisdiction": "india",
+      "similarity_score": 0.85
+    },
+    {
+      "chunk_id": "chunk_0012",
+      "text": "Where an applicant modifies a traditional formulation through a novel extraction process, standardisation method, or a new therapeutic use not disclosed in prior art, the modified aspect alone may be examined for novelty and inventive step, independent of the underlying traditional formulation.",
+      "act_name": "Patents Act, 1970",
+      "section": "3(p) - Explanatory Note",
+      "jurisdiction": "india",
+      "similarity_score": 0.78
+    }
+  ],
+  "confidence": 0.84,
+  "should_abstain": false
+}

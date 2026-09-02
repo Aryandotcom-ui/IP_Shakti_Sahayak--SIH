@@ -1,0 +1,157 @@
+[
+  {
+    "id": "q01",
+    "query": "Can I patent a classical Ayurvedic formulation using neem extract?",
+    "matched_chunks": [
+      {"chunk_id": "chunk_0001", "text": "Section 3(p) excludes an invention which, in effect, is traditional knowledge.", "act_name": "Patents Act, 1970", "section": "3(p)", "jurisdiction": "india", "similarity_score": 0.91}
+    ],
+    "confidence": 0.88,
+    "should_abstain": false,
+    "expect_abstain": false,
+    "expected_citation": {"act_name": "Patents Act, 1970", "section": "3(p)"}
+  },
+  {
+    "id": "q02",
+    "query": "Is a novel extraction process for a traditional formulation separately patentable?",
+    "matched_chunks": [
+      {"chunk_id": "chunk_0012", "text": "Where an applicant modifies a traditional formulation through a novel extraction process, the modified aspect alone may be examined for novelty.", "act_name": "Patents Act, 1970", "section": "3(p) - Explanatory Note", "jurisdiction": "india", "similarity_score": 0.83}
+    ],
+    "confidence": 0.79,
+    "should_abstain": false,
+    "expect_abstain": false,
+    "expected_citation": {"act_name": "Patents Act, 1970", "section": "3(p) - Explanatory Note"}
+  },
+  {
+    "id": "q03",
+    "query": "What defines a 'classical' formulation for patent examination purposes?",
+    "matched_chunks": [
+      {"chunk_id": "chunk_0007", "text": "A formulation shall be considered 'classical' where its composition is drawn directly from a recognised Ayurvedic text without modification.", "act_name": "Ayurveda, Siddha and Unani Drugs Technical Advisory Board Guidelines", "section": "4.2", "jurisdiction": "india", "similarity_score": 0.86}
+    ],
+    "confidence": 0.81,
+    "should_abstain": false,
+    "expect_abstain": false,
+    "expected_citation": {"act_name": "Ayurveda, Siddha and Unani Drugs Technical Advisory Board Guidelines", "section": "4.2"}
+  },
+  {
+    "id": "q04",
+    "query": "Does the international Patent Cooperation Treaty recognise traditional knowledge exclusions?",
+    "matched_chunks": [
+      {"chunk_id": "chunk_0021", "text": "Contracting states may apply their own domestic traditional-knowledge exclusions during national phase examination.", "act_name": "Patent Cooperation Treaty", "section": "Art. 27", "jurisdiction": "international", "similarity_score": 0.74}
+    ],
+    "confidence": 0.68,
+    "should_abstain": false,
+    "expect_abstain": false,
+    "expected_citation": {"act_name": "Patent Cooperation Treaty", "section": "Art. 27"}
+  },
+  {
+    "id": "q05",
+    "query": "What is the trademark registration fee for a foreign applicant filing in Japan?",
+    "matched_chunks": [],
+    "confidence": 0.10,
+    "should_abstain": true,
+    "expect_abstain": true,
+    "expected_citation": null
+  },
+  {
+    "id": "q06",
+    "query": "How long is copyright protection for a folk song composed by an unknown author in Brazil?",
+    "matched_chunks": [],
+    "confidence": 0.08,
+    "should_abstain": true,
+    "expect_abstain": true,
+    "expected_citation": null
+  },
+  {
+    "id": "q07",
+    "query": "Can a phytopharmaceutical drug derived from a known plant be patented in India?",
+    "matched_chunks": [
+      {"chunk_id": "chunk_0033", "text": "A phytopharmaceutical drug, being a purified and standardised fraction with defined qualitative composition, is not per se excluded under Section 3(p) merely because its source plant is traditionally known.", "act_name": "Patents Act, 1970", "section": "3(p) - Phytopharmaceutical Proviso", "jurisdiction": "india", "similarity_score": 0.89}
+    ],
+    "confidence": 0.85,
+    "should_abstain": false,
+    "expect_abstain": false,
+    "expected_citation": {"act_name": "Patents Act, 1970", "section": "3(p) - Phytopharmaceutical Proviso"}
+  },
+  {
+    "id": "q08",
+    "query": "What labelling is required for an Ayurvedic cosmetic product sold in India?",
+    "matched_chunks": [
+      {"chunk_id": "chunk_0044", "text": "Every Ayurvedic cosmetic shall bear on its label the true list of ingredients and the licence number of the manufacturer.", "act_name": "Drugs and Cosmetics Rules, 1945", "section": "Rule 148", "jurisdiction": "india", "similarity_score": 0.80}
+    ],
+    "confidence": 0.77,
+    "should_abstain": false,
+    "expect_abstain": false,
+    "expected_citation": {"act_name": "Drugs and Cosmetics Rules, 1945", "section": "Rule 148"}
+  },
+  {
+    "id": "q09",
+    "query": "Is prior informed consent from a local community required before commercial use of a traditional formulation?",
+    "matched_chunks": [
+      {"chunk_id": "chunk_0050", "text": "Access to and commercial use of traditional knowledge associated with biological resources requires prior approval from the National Biodiversity Authority.", "act_name": "Biological Diversity Act, 2002", "section": "Section 3", "jurisdiction": "india", "similarity_score": 0.84}
+    ],
+    "confidence": 0.80,
+    "should_abstain": false,
+    "expect_abstain": false,
+    "expected_citation": {"act_name": "Biological Diversity Act, 2002", "section": "Section 3"}
+  },
+  {
+    "id": "q10",
+    "query": "What is the minimum wage for agricultural workers harvesting Ayurvedic herbs in Kerala?",
+    "matched_chunks": [],
+    "confidence": 0.05,
+    "should_abstain": true,
+    "expect_abstain": true,
+    "expected_citation": null
+  },
+  {
+    "id": "q11",
+    "query": "Can a new drug developed from a mixed plant-animal source formulation be patented?",
+    "matched_chunks": [
+      {"chunk_id": "chunk_0061", "text": "A new drug formulation combining plant and animal-derived components is assessed for novelty and inventive step independent of the traditional-knowledge status of its individual components, provided the combination itself is not disclosed in prior art.", "act_name": "Patents Act, 1970", "section": "Section 2(1)(j)", "jurisdiction": "india", "similarity_score": 0.82}
+    ],
+    "confidence": 0.78,
+    "should_abstain": false,
+    "expect_abstain": false,
+    "expected_citation": {"act_name": "Patents Act, 1970", "section": "Section 2(1)(j)"}
+  },
+  {
+    "id": "q12",
+    "query": "Does the TRIPS Agreement require WTO members to protect traditional knowledge as such?",
+    "matched_chunks": [
+      {"chunk_id": "chunk_0070", "text": "The TRIPS Agreement does not contain an express obligation requiring member states to protect traditional knowledge as a distinct category of intellectual property.", "act_name": "TRIPS Agreement", "section": "Part II", "jurisdiction": "international", "similarity_score": 0.71}
+    ],
+    "confidence": 0.66,
+    "should_abstain": false,
+    "expect_abstain": false,
+    "expected_citation": {"act_name": "TRIPS Agreement", "section": "Part II"}
+  },
+  {
+    "id": "q13",
+    "query": "What visa category should a foreign Ayurvedic practitioner apply for to work in India?",
+    "matched_chunks": [],
+    "confidence": 0.07,
+    "should_abstain": true,
+    "expect_abstain": true,
+    "expected_citation": null
+  },
+  {
+    "id": "q14",
+    "query": "Is an 'aahar' (nutraceutical food) formulation examined under the Patents Act or the Food Safety Act?",
+    "matched_chunks": [
+      {"chunk_id": "chunk_0080", "text": "Formulations classified as 'aahar' intended primarily for nutritional use are regulated under food safety standards, while any novel process claim relating to their manufacture remains separately examinable under the Patents Act.", "act_name": "Food Safety and Standards Act, 2006", "section": "Section 22", "jurisdiction": "india", "similarity_score": 0.75}
+    ],
+    "confidence": 0.72,
+    "should_abstain": false,
+    "expect_abstain": false,
+    "expected_citation": {"act_name": "Food Safety and Standards Act, 2006", "section": "Section 22"}
+  },
+  {
+    "id": "q15",
+    "query": "What is the exchange rate impact on royalty payments for licensed Ayurvedic IP exported to the EU?",
+    "matched_chunks": [],
+    "confidence": 0.06,
+    "should_abstain": true,
+    "expect_abstain": true,
+    "expected_citation": null
+  }
+]
