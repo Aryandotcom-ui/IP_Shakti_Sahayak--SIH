@@ -7,9 +7,36 @@
 # section_effective_dates records amendments: the parent Act commenced in
 # 1972, but s.3(d) only exists in its current form from 2005. Without
 # this, the as-of filter serves the wrong law.
+#
+# ---------------------------------------------------------------------------
+# ACT NAMES ARE A CONTRACT
+# ---------------------------------------------------------------------------
+# `act_name` is matched EXACTLY by Chroma's metadata filter and by
+# ai/knowledge_graph/ontology.yaml, which cites these strings as the legal
+# basis of every obligation. A one-character difference — a missing "The ",
+# a comma — silently breaks the pre-filter and makes an obligation
+# uncitable. `check_corpus.py` fails loudly on that drift instead of
+# leaving you to notice it in a demo.
+#
+# ---------------------------------------------------------------------------
+# `status`
+# ---------------------------------------------------------------------------
+#   ingested — the PDF is on disk and has been through the pipeline
+#   pending  — the graph cites this instrument but we do not have the source
+#
+# Entries marked `pending` are inert: load_manifest() keys by filename and
+# the pipeline only looks up files it actually finds, so listing a document
+# we do not yet have costs nothing and keeps the acquisition list in the
+# same place as the names it has to match. An obligation citing a `pending`
+# instrument still fires — the duty exists in law whether or not we hold the
+# PDF — but it is reported as uncitable rather than being quietly dropped.
 
 documents:
+  # -------------------------------------------------------------------------
+  # Ingested
+  # -------------------------------------------------------------------------
   - file: patents-act-1970.pdf
+    status: ingested
     jurisdiction: india
     instrument_type: statute
     act_name: "The Patents Act, 1970"
@@ -20,8 +47,178 @@ documents:
       "Section 10": "2003-05-20"
 
   - file: wipo-gratk-2024.pdf
+    status: ingested
     jurisdiction: international
     instrument_type: treaty
     act_name: "WIPO Treaty on Intellectual Property, Genetic Resources and Associated Traditional Knowledge, 2024"
     effective_date: "2024-05-24"
     source_url: "https://www.wipo.int/treaties/en/ip/gratk/"
+
+  # -------------------------------------------------------------------------
+  # Pending — cited by the knowledge graph, source not yet obtained
+  # -------------------------------------------------------------------------
+  - file: biological-diversity-act-2002.pdf
+    status: pending
+    jurisdiction: india
+    instrument_type: statute
+    act_name: "The Biological Diversity Act, 2002"
+    effective_date: "2003-10-01"
+    source_url: ""
+    acquisition:
+      where: "India Code (indiacode.nic.in) — search 'Biological Diversity Act 2002'"
+      note: >-
+        Obtain the AS-AMENDED consolidated text incorporating the Biological
+        Diversity (Amendment) Act, 2023 (No. 10 of 2023). The bare 2002 text
+        states the pre-amendment section 6 rule (NBA approval before FILING),
+        which the 2023 amendment replaced with approval before GRANT.
+        Ingesting the unamended text will make the system tell applicants
+        they are in breach when they are not.
+      priority: critical
+    section_effective_dates:
+      "Section 3": "2023-08-01"
+      "Section 6": "2023-08-01"
+      "Section 6(1A)": "2023-08-01"
+      "Section 6(1B)": "2023-08-01"
+      "Section 7": "2023-08-01"
+      "Section 40": "2023-08-01"
+
+  - file: biological-diversity-amendment-act-2023.pdf
+    status: pending
+    jurisdiction: india
+    instrument_type: statute
+    act_name: "The Biological Diversity (Amendment) Act, 2023"
+    effective_date: "2023-08-01"
+    source_url: "https://egazette.gov.in/WriteReadData/2023/247815.pdf"
+    acquisition:
+      where: "Gazette of India (URL above — verify before relying on it)"
+      note: >-
+        The amending Act itself. Worth ingesting alongside the consolidated
+        text so the system can answer "what changed and when", which is the
+        question most applicants who half-remember the old rule are actually
+        asking.
+      priority: high
+
+  - file: biological-diversity-rules-2024.pdf
+    status: pending
+    jurisdiction: india
+    instrument_type: rule
+    act_name: "The Biological Diversity Rules, 2024"
+    effective_date: "2024-10-22"
+    source_url: ""
+    acquisition:
+      where: "National Biodiversity Authority (nbaindia.org) or Gazette of India"
+      note: >-
+        Rule 16 carries the section 6 procedure: Form 7, the fee, and the
+        45-day post-grant notification the graph encodes. Verify the
+        commencement date above against the gazette notification before
+        ingesting — it drives the as-of filter.
+      priority: critical
+
+  - file: drugs-and-cosmetics-act-1940.pdf
+    status: pending
+    jurisdiction: india
+    instrument_type: statute
+    act_name: "The Drugs and Cosmetics Act, 1940"
+    effective_date: "1940-04-10"
+    source_url: ""
+    acquisition:
+      where: "India Code (indiacode.nic.in)"
+      note: >-
+        Chapter IVA (sections 33B–33-I) is the ASU&H part that matters here;
+        section 33EEC is cited by the graph. The Act is long and mostly
+        irrelevant to Ayurveda IP — consider ingesting Chapter IVA only, and
+        record that scoping decision here rather than letting a future reader
+        assume the whole Act is searchable.
+      priority: high
+
+  - file: drugs-and-cosmetics-rules-1945.pdf
+    status: pending
+    jurisdiction: india
+    instrument_type: rule
+    act_name: "The Drugs and Cosmetics Rules, 1945"
+    effective_date: "1945-12-21"
+    source_url: ""
+    acquisition:
+      where: "CDSCO (cdsco.gov.in)"
+      note: >-
+        Appendix I-B holds the phytopharmaceutical data requirements. Rule
+        153 and Schedule T (GMP for ASU drugs) are the other parts worth
+        having.
+      priority: medium
+
+  - file: fssai-ayurveda-aahar-regulations-2022.pdf
+    status: pending
+    jurisdiction: india
+    instrument_type: rule
+    act_name: "Food Safety and Standards (Ayurveda Aahar) Regulations, 2022"
+    effective_date: "2022-07-27"
+    source_url: ""
+    acquisition:
+      where: "FSSAI (fssai.gov.in) — Regulations / Gazette notifications"
+      note: >-
+        Verify the commencement date; these were notified and brought into
+        force on different dates.
+      priority: medium
+
+  - file: cosmetics-rules-2020.pdf
+    status: pending
+    jurisdiction: india
+    instrument_type: rule
+    act_name: "The Cosmetics Rules, 2020"
+    effective_date: "2020-12-15"
+    source_url: ""
+    acquisition:
+      where: "CDSCO (cdsco.gov.in)"
+      priority: low
+
+  # -------------------------------------------------------------------------
+  # Pending — not cited by the graph yet, but in scope for the problem
+  # statement. Add obligations to the ontology as these land, rather than
+  # ingesting text nothing reasons over.
+  # -------------------------------------------------------------------------
+  - file: patents-rules-2003.pdf
+    status: pending
+    jurisdiction: india
+    instrument_type: rule
+    act_name: "The Patents Rules, 2003"
+    effective_date: "2003-05-20"
+    source_url: ""
+    acquisition:
+      where: "Indian Patent Office (ipindia.gov.in)"
+      note: >-
+        Needed for Form 1, Form 3 and Form 27 mechanics once the patent-prep
+        module (gap 6) exists. Obtain the version amended by the Patents
+        (Amendment) Rules, 2024, which changed the Form 27 working-statement
+        cadence.
+      priority: high
+
+  - file: nagoya-protocol-2010.pdf
+    status: pending
+    jurisdiction: international
+    instrument_type: treaty
+    act_name: "Nagoya Protocol on Access to Genetic Resources and the Fair and Equitable Sharing of Benefits, 2010"
+    effective_date: "2014-10-12"
+    source_url: ""
+    acquisition:
+      where: "CBD Secretariat (cbd.int/abs)"
+      note: >-
+        The international frame the Biological Diversity Act implements.
+        Needed for the outbound case — an Indian applicant using a resource
+        sourced from another Party, where Indian law is not the binding
+        instrument.
+      priority: medium
+
+  - file: geographical-indications-act-1999.pdf
+    status: pending
+    jurisdiction: india
+    instrument_type: statute
+    act_name: "The Geographical Indications of Goods (Registration and Protection) Act, 1999"
+    effective_date: "2003-09-15"
+    source_url: ""
+    acquisition:
+      where: "India Code (indiacode.nic.in)"
+      note: >-
+        GI is a live route for regional Ayurvedic products and is often the
+        right answer for an applicant barred under section 3(p). Worth having
+        before the system can only ever say no.
+      priority: medium

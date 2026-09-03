@@ -1,8 +1,8 @@
 """Command line entrypoint.
 
-    python -m ingest.cli data/pdfs --manifest manifests/corpus.yaml
-    python -m ingest.cli data/pdfs --dry-run --json-out build/chunks.json
-    python -m ingest.cli data/pdfs/new.pdf --interactive
+    python -m ai.cli data/pdfs --manifest ai/corpus.yaml
+    python -m ai.cli data/pdfs --dry-run --json-out build/chunks.json
+    python -m ai.cli data/pdfs/new.pdf --interactive
 """
 
 from __future__ import annotations

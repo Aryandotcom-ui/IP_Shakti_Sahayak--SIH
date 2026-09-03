@@ -16,12 +16,44 @@ class ClassificationRequest(BaseModel):
     jurisdiction: Jurisdiction | None = None
 
 
+ApplicantCategory = Literal[
+    "indian_individual", "indian_entity", "foreign_controlled_entity",
+    "non_resident_indian", "foreign_national",
+]
+ResourceOrigin = Literal["india", "outside_india", "mixed"]
+ResourceCultivation = Literal["cultivated", "wild_collected", "mixed"]
+
+
+class ComplianceFacts(BaseModel):
+    """Facts the classifier cannot infer but the Biological Diversity Act
+    turns on.
+
+    All optional, all defaulting to None. None means "unknown" and produces
+    a follow-up question in the response; it must never be read as False.
+    Whether the applicant is a section 3(2) person is not something a
+    question about a formulation can reveal, so the API has to be able to
+    carry it separately and to admit when it has not been told.
+    """
+    applicant_category: ApplicantCategory | None = None
+    resource_origin: ResourceOrigin | None = None
+    resource_cultivation: ResourceCultivation | None = None
+    practitioner_is_registered_ayush: bool | None = None
+    uses_biological_material: bool | None = None
+    uses_codified_tk: bool | None = None
+    seeking_ipr: bool | None = None
+    ipr_already_granted: bool | None = None
+    intends_commercialisation: bool | None = None
+    formulation_name: str | None = Field(default=None, max_length=200)
+    ingredients: list[str] | None = Field(default=None, max_length=50)
+
+
 class QueryRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
     query: str = Field(min_length=3, max_length=4000)
     classification: ClassificationRequest | None = None
     top_k: int = Field(default=5, ge=1, le=10)
+    compliance_facts: ComplianceFacts | None = None
 
 
 class CitationResponse(BaseModel):
@@ -46,6 +78,10 @@ class QueryResponse(BaseModel):
     abstained: bool
     disclaimer: str
     sources: list[SourceResponse] = Field(default_factory=list)
+    # Left loosely typed on purpose: the shape is owned by
+    # ai/compliance and adding an obligation field should not require a
+    # coordinated edit here. The AI-layer dataclasses are the contract.
+    compliance: dict | None = None
 
 
 class CorpusResponse(BaseModel):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import logging
 from pathlib import Path
 import sys
 from typing import Any
@@ -19,6 +20,7 @@ from ai.person_b_retrieval.schema import (  # noqa: E402
 )
 from ai.store import VectorStore  # noqa: E402
 from ai.person_c_generation.generate import generate_answer  # noqa: E402
+from ai.compliance import get_assessor  # noqa: E402
 
 from ..config import settings  # noqa: E402
 
@@ -101,11 +103,41 @@ class AIService:
         source_map = {item["chunk_id"]: item for item in result["matches"]}
         return retrieval, source_map
 
+    def compliance(
+        self,
+        classification: Classification | None,
+        facts: dict[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        """ABS screening off the same classification retrieval already used.
+
+        Runs on every query rather than behind a separate endpoint. Someone
+        who does not know section 6 of the Biological Diversity Act exists
+        will never think to ask for an ABS check, and that person is exactly
+        who the flag is for.
+
+        Failure here degrades to None rather than propagating: a screening
+        that could not run must not take down an answer the user can still
+        use. The absent key is the signal; the API never emits an empty
+        report that would render as "nothing to worry about".
+        """
+        if classification is None and not facts:
+            return None
+        try:
+            assessor = get_assessor(str(REPO_ROOT / "ai" / "corpus.yaml"))
+            report = assessor.assess_from_classification(
+                classification, **(facts or {})
+            )
+            return report.to_dict()
+        except Exception as exc:  # pragma: no cover - defensive
+            logging.getLogger(__name__).exception("compliance screening failed: %s", exc)
+            return None
+
     def answer(
         self,
         query: str,
         classification: Classification | None,
         top_k: int,
+        compliance_facts: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         retrieval, source_map = self.retrieve(query, classification, top_k)
 
@@ -169,6 +201,11 @@ class AIService:
             "abstained": final.abstained,
             "disclaimer": final.disclaimer,
             "sources": sources,
+            # Attached even when retrieval abstained. Abstention means the
+            # corpus could not answer the question asked; it says nothing
+            # about whether an ABS obligation applies, and those are decided
+            # by the graph rather than by retrieval.
+            "compliance": self.compliance(classification, compliance_facts),
         }
 
 

@@ -4,7 +4,7 @@ gazette and WIPO PDFs contain: a table of contents, running headers,
 page numbers, hyphenated line breaks, numbered sub-clauses, and one
 image-only document that must be rejected.
 
-    python scripts/make_test_pdfs.py data/pdfs
+    python -m ai.make_test_pdfs data/pdfs
 """
 
 from __future__ import annotations
