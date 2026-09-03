@@ -25,6 +25,7 @@ log = logging.getLogger(__name__)
 
 DEFAULT_MODEL = "BAAI/bge-small-en-v1.5"
 PASSAGE_PREFIX = "passage: "
+QUERY_PREFIX = "query: "
 
 
 class Embedder(Protocol):
@@ -38,27 +39,45 @@ class SentenceTransformerEmbedder:
     """Real embeddings. Imports torch lazily so the rest of the package
     stays importable on machines without it."""
 
-    def __init__(self, model_name: str = DEFAULT_MODEL, batch_size: int = 32,
-                 device: str | None = None) -> None:
-        from sentence_transformers import SentenceTransformer  # noqa: PLC0415
+    def __init__(
+        self,
+        model_name: str = DEFAULT_MODEL,
+        batch_size: int = 32,
+        device: str | None = None,
+    ) -> None:
+        from sentence_transformers import SentenceTransformer
 
         self.name = model_name
         self.batch_size = batch_size
         self._model = SentenceTransformer(model_name, device=device)
-        self.dimension = int(self._model.get_sentence_embedding_dimension())
+        self.dimension = int(
+            self._model.get_sentence_embedding_dimension()
+        )
         log.info("loaded %s (%d-dim)", model_name, self.dimension)
 
     def encode(self, texts: Sequence[str]) -> list[list[float]]:
         prefixed = [PASSAGE_PREFIX + t for t in texts]
+
         vectors = self._model.encode(
             prefixed,
             batch_size=self.batch_size,
-            normalize_embeddings=True,   # cosine == dot product downstream
+            normalize_embeddings=True,
             show_progress_bar=len(prefixed) > 200,
             convert_to_numpy=True,
         )
+
         return [v.tolist() for v in vectors]
 
+    def encode_query(self, texts: Sequence[str]) -> list[list[float]]:
+        prefixed = [QUERY_PREFIX + t for t in texts]
+        vectors = self._model.encode(
+            prefixed,
+            batch_size=self.batch_size,
+            normalize_embeddings=True,
+            show_progress_bar=False,
+            convert_to_numpy=True,
+        )
+        return [v.tolist() for v in vectors]
 
 class HashingEmbedder:
     """Deterministic bag-of-words hashing. Offline stand-in only."""

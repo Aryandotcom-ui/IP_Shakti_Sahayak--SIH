@@ -1,0 +1,12 @@
+# API/runtime
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+pydantic>=2.7,<3.0
+pydantic-settings>=2.4,<3.0
+
+# Existing AI/RAG runtime dependencies used by the backend adapter
+pymupdf>=1.24
+chromadb>=0.5
+sentence-transformers>=3.0
+PyYAML>=6.0
+anthropic>=0.40

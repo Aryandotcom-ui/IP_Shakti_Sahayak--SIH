@@ -176,21 +176,28 @@ class VectorStore:
     """ChromaDB persistent collection."""
 
     def __init__(self, path: Path | str, collection: str = COLLECTION) -> None:
-        import chromadb  # noqa: PLC0415
+        import chromadb
 
         self.path = Path(path)
         self.path.mkdir(parents=True, exist_ok=True)
         self.client = chromadb.PersistentClient(path=str(self.path))
-        # Embeddings are supplied explicitly; no server-side embedding function.
+
         self.collection = self.client.get_or_create_collection(
-            name=collection, metadata={"hnsw:space": "cosine"}
+            name=collection,
+            metadata={"hnsw:space": "cosine"}
         )
 
-    def upsert(self, chunks: Sequence[Chunk], embeddings: Sequence[Sequence[float]]) -> None:
+    def upsert(
+        self,
+        chunks: Sequence[Chunk],
+        embeddings: Sequence[Sequence[float]]
+    ) -> None:
         if not chunks:
             return
+
         if len(chunks) != len(embeddings):
             raise ValueError("chunk/embedding count mismatch")
+
         self.collection.upsert(
             ids=[c.chunk_id for c in chunks],
             documents=[c.text for c in chunks],
@@ -211,3 +218,76 @@ class VectorStore:
 
     def count(self) -> int:
         return int(self.collection.count())
+
+    def query(
+        self,
+        query: str,
+        embedder,
+        jurisdiction: str | None = None,
+        formulation_type: str | None = None,
+        top_k: int = 5,
+    ) -> dict:
+        """Query ChromaDB and return retrieval results."""
+
+        query_embedding = embedder.encode_query([query])[0]
+
+        conditions = []
+
+        if jurisdiction:
+            conditions.append({
+                "jurisdiction": jurisdiction
+            })
+
+        if formulation_type:
+            conditions.append({
+                "instrument_type": formulation_type
+            })
+
+        where = None
+
+        if len(conditions) == 1:
+            where = conditions[0]
+        elif len(conditions) > 1:
+            where = {"$and": conditions}
+
+        result = self.collection.query(
+            query_embeddings=[list(query_embedding)],
+            n_results=top_k,
+            where=where,
+            include=[
+                "documents",
+                "metadatas",
+                "distances"
+            ],
+        )
+
+        matches = []
+
+        ids = result.get("ids", [[]])[0]
+        documents = result.get("documents", [[]])[0]
+        metadatas = result.get("metadatas", [[]])[0]
+        distances = result.get("distances", [[]])[0]
+
+        for i, chunk_id in enumerate(ids):
+            metadata = metadatas[i] or {}
+
+            distance = distances[i] if i < len(distances) else 1.0
+
+            similarity = max(
+                0.0,
+                min(1.0, 1.0 - float(distance))
+            )
+
+            matches.append({
+                "chunk_id": chunk_id,
+                "text": documents[i] if i < len(documents) else "",
+                "act_name": metadata.get("act_name"),
+                "section": metadata.get("section"),
+                "jurisdiction": metadata.get("jurisdiction"),
+                "similarity_score": similarity,
+                "source_url": metadata.get("source_url"),
+            })
+
+        return {
+            "matches": matches
+        }

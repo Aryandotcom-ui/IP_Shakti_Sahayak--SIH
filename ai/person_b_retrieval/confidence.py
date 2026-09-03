@@ -9,7 +9,7 @@ returning a bool, so the internals here can change freely.
 """
 
 from typing import List
-from schema import MatchedChunk
+from .schema import MatchedChunk
 
 ABSTAIN_THRESHOLD = 0.20  # below this confidence, don't answer — say so instead
 # NOTE: this threshold is tuned for the TF-IDF char n-gram stand-in embedder,
@@ -31,7 +31,11 @@ def compute_confidence(matched_chunks: List[MatchedChunk]) -> float:
     return round(confidence, 4)
 
 
-def decide_abstain(confidence: float, matched_chunks: List[MatchedChunk]) -> bool:
+def decide_abstain(
+    confidence: float,
+    matched_chunks: List[MatchedChunk],
+    threshold: float = ABSTAIN_THRESHOLD,
+) -> bool:
     if not matched_chunks:
         return True
-    return confidence < ABSTAIN_THRESHOLD
+    return confidence < threshold
