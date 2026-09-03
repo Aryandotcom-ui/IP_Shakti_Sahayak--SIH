@@ -9,23 +9,24 @@ and hoping the right chunk floats to the top.
 
 from typing import List, Optional
 import numpy as np
+import sys
+from pathlib import Path
 
-from schema import Chunk, Classification, MatchedChunk, RetrievalResult
-from embeddings import Embedder, cosine_sim
-from confidence import compute_confidence, decide_abstain
+# Absolute imports rooted at the `ai` package — matches how the backend
+# (backend/app/services/ai_service.py) imports this module, so this file
+# behaves the same whether it's run standalone or loaded by the API.
+# Requires the repo root on sys.path, which the two lines below guarantee
+# even if this file is executed directly rather than via `-m`.
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
-# Simple lookup table mapping a formulation type to the acts most relevant to it.
-# This is the "knowledge graph" in its simplest possible form for the MVP —
-# a dict today, a real graph structure later. Any act NOT in a formulation's
-# list can still be matched, but chunks from listed acts are preferred.
-FORMULATION_RELEVANT_ACTS = {
-    "classical": ["Patents Act, 1970", "Biological Diversity Act, 2002", "Drugs and Cosmetics Act, 1940"],
-    "proprietary": ["Drugs and Cosmetics Act, 1940", "Patents Act, 1970"],
-    "new_drug": ["Patents Act, 1970", "Patents Rules, 2003", "Drugs and Cosmetics Act, 1940"],
-    "phytopharmaceutical": ["Drugs and Cosmetics Act, 1940", "Patents Act, 1970"],
-    "aahar": ["FSSAI Ayurveda Aahar Regulations"],
-    "cosmetic": ["Drugs and Cosmetics Act, 1940"],
-}
+from ai.person_b_retrieval.schema import Chunk, Classification, MatchedChunk, RetrievalResult
+from ai.person_b_retrieval.embeddings import Embedder, cosine_sim
+from ai.person_b_retrieval.confidence import compute_confidence, decide_abstain
+from ai.shared.taxonomy import acts_for_formulation  # single source of truth,
+# shared with the production store.py — see ai/shared/taxonomy.py for why
+# this must not be a second copy of the mapping.
 
 MIN_SIMILARITY_FLOOR = 0.05  # below this, a "match" isn't worth returning at all
 
@@ -42,7 +43,7 @@ def filter_chunks(
         result = [c for c in result if c.jurisdiction == jurisdiction]
 
     if classification and classification.formulation_type:
-        relevant_acts = FORMULATION_RELEVANT_ACTS.get(classification.formulation_type)
+        relevant_acts = acts_for_formulation(classification.formulation_type)
         if relevant_acts:
             preferred = [c for c in result if c.act_name in relevant_acts]
             # If narrowing by formulation type leaves nothing, fall back to the

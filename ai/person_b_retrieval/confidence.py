@@ -8,8 +8,15 @@ depends on compute_confidence() returning a 0-1 float and decide_abstain()
 returning a bool, so the internals here can change freely.
 """
 
+import sys
+from pathlib import Path
 from typing import List
-from .schema import MatchedChunk
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from ai.person_b_retrieval.schema import MatchedChunk
 
 ABSTAIN_THRESHOLD = 0.20  # below this confidence, don't answer — say so instead
 # NOTE: this threshold is tuned for the TF-IDF char n-gram stand-in embedder,

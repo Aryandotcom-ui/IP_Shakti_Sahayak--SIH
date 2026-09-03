@@ -1,10 +1,16 @@
 import json
 import os
+import sys
+from pathlib import Path
 import pytest
 
-from schema import Chunk, Classification
-from embeddings import Embedder
-from retrieval import retrieve, filter_chunks
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from ai.person_b_retrieval.schema import Chunk, Classification
+from ai.person_b_retrieval.embeddings import Embedder
+from ai.person_b_retrieval.retrieval import retrieve, filter_chunks
 
 FIXTURE_PATH = os.path.join(os.path.dirname(__file__), "fixtures", "fake_chunks.json")
 
@@ -54,7 +60,7 @@ def test_retrieve_relevant_india_query_returns_correct_citation(all_chunks, embe
     assert result.should_abstain is False
     assert result.confidence > 0
     act_names = [c.act_name for c in result.matched_chunks]
-    assert "Patents Act, 1970" in act_names
+    assert "The Patents Act, 1970" in act_names
 
 
 def test_retrieve_relevant_international_query(all_chunks, embedder):

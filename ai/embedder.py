@@ -98,6 +98,19 @@ class HashingEmbedder:
             out.append([v / norm for v in vec])
         return out
 
+    def encode_query(self, texts: Sequence[str]) -> list[list[float]]:
+        # BUG FIX: VectorStore.query() (store.py) always calls
+        # embedder.encode_query(), but this class previously only
+        # implemented encode(). That meant the retrieval/query path had
+        # no offline fallback at all, even though ingestion already
+        # supports --allow-fallback-embeddings. HashingEmbedder has no
+        # query/passage asymmetry (unlike the real model's prefixes), so
+        # this is just an alias — it exists so retrieval plumbing can be
+        # exercised without network access, same as ingestion already
+        # allows. Never use this for a real answer — see the module
+        # docstring.
+        return self.encode(texts)
+
 
 def get_embedder(
     model_name: str = DEFAULT_MODEL,

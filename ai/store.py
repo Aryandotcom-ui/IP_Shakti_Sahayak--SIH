@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Iterable, Sequence
 
 from .schema import Chunk
+from .shared.taxonomy import acts_for_formulation
 
 log = logging.getLogger(__name__)
 
@@ -239,9 +240,16 @@ class VectorStore:
             })
 
         if formulation_type:
-            conditions.append({
-                "instrument_type": formulation_type
-            })
+            # BUG FIX: this used to filter on `instrument_type`, which only
+            # ever holds "statute"/"rule"/"treaty"/"case_law" — a chunk's
+            # instrument_type can never equal a formulation_type like
+            # "classical", so this filter silently matched nothing whenever
+            # formulation_type was supplied. The actual pre-filter mechanism
+            # is: map formulation_type -> the acts relevant to it, and
+            # filter by act_name instead.
+            relevant_acts = acts_for_formulation(formulation_type)
+            if relevant_acts:
+                conditions.append({"act_name": {"$in": relevant_acts}})
 
         where = None
 

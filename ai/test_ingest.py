@@ -17,11 +17,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
-from ingest.extract import PDFOpenError, ScannedPDFError, extract  # noqa: E402
-from ingest.metadata import infer_effective_date, infer_instrument_type, infer_jurisdiction  # noqa: E402
-from ingest.schema import Chunk, SCHEMA_KEYS, SchemaError, content_hash, validate_all  # noqa: E402
-from ingest.sectioner import chunk_sections, find_sections  # noqa: E402
-from ingest.store import Registry  # noqa: E402
+from ai.extract import PDFOpenError, ScannedPDFError, extract  # noqa: E402
+from ai.metadata import infer_effective_date, infer_instrument_type, infer_jurisdiction  # noqa: E402
+from ai.schema import Chunk, SCHEMA_KEYS, SchemaError, content_hash, validate_all  # noqa: E402
+from ai.sectioner import chunk_sections, find_sections  # noqa: E402
+from ai.store import Registry  # noqa: E402
 
 STATUTE = """THE PATENTS ACT, 1970
 
