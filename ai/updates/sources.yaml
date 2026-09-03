@@ -1,0 +1,47 @@
+# ai/updates/sources.yaml
+#
+# Sources the auto-update watcher polls for changes. Each entry names the
+# act it feeds — matched EXACTLY against ai/corpus.yaml's act_name, the
+# same exact-match contract that file's own header describes — so a
+# published change lands against the right document.
+#
+# `priority` reuses ai/corpus.yaml's acquisition-priority scale
+# (critical/high/medium/low). A `critical` source always lands in
+# mandatory_review regardless of how small the byte diff looks — see
+# ai/updates/classify.py.
+#
+# `source_trust: official` means a government or treaty portal. Anything
+# else is always sent to mandatory_review, however small the diff.
+#
+# These URLs are the same ones already recorded (and, for pending
+# documents, marked "verify before relying on it") in ai/corpus.yaml —
+# reused here rather than re-guessed, and carrying the same caveat: check
+# a URL resolves before depending on this list in production. Watching a
+# listing/index page rather than the PDF directly is usually the more
+# stable choice for a real deployment, since a document's own byte
+# content can be repaginated or re-exported without the underlying law
+# changing; this file watches the direct document URLs as the simplest
+# version of the mechanism; swap in an index-page URL per source once
+# one is confirmed to reliably announce new versions.
+
+sources:
+  - name: patents-act-1970
+    url: "https://www.indiacode.nic.in/handle/123456789/1979"
+    act_name: "The Patents Act, 1970"
+    jurisdiction: india
+    priority: high
+    source_trust: official
+
+  - name: wipo-gratk-2024
+    url: "https://www.wipo.int/treaties/en/ip/gratk/"
+    act_name: "WIPO Treaty on Intellectual Property, Genetic Resources and Associated Traditional Knowledge, 2024"
+    jurisdiction: international
+    priority: medium
+    source_trust: official
+
+  - name: biological-diversity-amendment-act-2023
+    url: "https://egazette.gov.in/WriteReadData/2023/247815.pdf"
+    act_name: "The Biological Diversity (Amendment) Act, 2023"
+    jurisdiction: india
+    priority: critical
+    source_trust: official

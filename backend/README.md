@@ -5,10 +5,13 @@ reimplementing retrieval or generation logic.
 
 ## Backend structure
 
-- `app/main.py` — FastAPI application, CORS, liveness endpoint
-- `app/api/routes.py` — HTTP API endpoints
+- `app/main.py` — FastAPI application, CORS, liveness endpoint, starts the
+  auto-update scheduler when `UPDATES_SCHEDULER_ENABLED=true`
+- `app/api/routes.py` — `/query`, `/corpus`
+- `app/api/updates_routes.py` — `/updates/*`, the auto-update review gate
 - `app/schemas.py` — Pydantic request/response contracts
 - `app/services/ai_service.py` — adapter between FastAPI and the existing AI/RAG pipeline
+- `app/services/updates_service.py` — adapter between FastAPI and `ai/updates`
 - `tests/test_api.py` — backend API tests
 
 ## API endpoints
@@ -57,6 +60,31 @@ normally an empty list on both sides.
 The response also carries `audit_id`, the id of the row this query wrote
 to the audit log, and `compliance`, the ABS obligation report (`null` when
 neither a classification nor compliance facts were supplied).
+
+### Auto-update pipeline (`/api/v1/updates/*`)
+
+Wraps `ai/updates` (see its own README for the tier logic). Off by
+default — set `UPDATES_SCHEDULER_ENABLED=true` to have the process poll
+`ai/updates/sources.yaml` on a schedule (`UPDATES_INTERVAL_MINUTES`,
+default 60), and `UPDATES_AUTO_INGEST=true` to let AUTO_PUBLISH /
+PUBLISH_THEN_AUDIT tiers ingest immediately rather than sit in the queue
+for an operator to publish explicitly.
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /updates/pending` | MANDATORY_REVIEW items awaiting approve/reject |
+| `GET /updates/queued` | Cleared but not yet ingested (the backlog when `UPDATES_AUTO_INGEST=false`) |
+| `GET /updates/needs-audit` | Already-published PUBLISH_THEN_AUDIT items awaiting sign-off |
+| `GET /updates/history?limit=50` | Decided/published/failed entries |
+| `POST /updates/check-now` | Run one watch cycle synchronously — `{"auto_ingest": true\|false\|null}` |
+| `POST /updates/{id}/approve` | `{"decided_by": "...", "notes": "..."}` |
+| `POST /updates/{id}/reject` | Same body shape |
+| `POST /updates/{id}/clear-audit` | Sign off a `needs-audit` entry |
+| `POST /updates/{id}/publish` | Run the real ingestion pipeline for an `approved`/`queued_for_ingest` entry |
+
+`decided_by` is free text, not checked against a login session — see
+`ai/updates/README.md`'s "what's a skeleton" section before exposing
+these beyond a trusted operator.
 
 ## Setup
 

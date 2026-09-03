@@ -10,3 +10,9 @@ chromadb>=0.5
 sentence-transformers>=3.0
 PyYAML>=6.0
 anthropic>=0.40
+
+# Auto-update pipeline (ai/updates) source-watcher scheduler. Optional at
+# runtime — ai/updates/scheduler.py degrades to a warning and no-op if
+# this is not installed, but it is listed here since UPDATES_SCHEDULER_ENABLED
+# needs it to actually run on a schedule.
+apscheduler>=3.10,<4.0

@@ -28,11 +28,28 @@ class Settings(BaseSettings):
     abstain_threshold: float = 0.20
 
     corpus_manifest_path: str = str(REPO_ROOT / "ai" / "corpus.yaml")
+    sqlite_registry_path: str = str(REPO_ROOT / "data" / "registry.sqlite3")
     audit_db_path: str = str(REPO_ROOT / "data" / "audit.sqlite3")
     # DPDP storage-limitation bound for the audit trail. purge_older_than()
-    # is not scheduled by anything in this process — the gap-5 auto-update
-    # pipeline's job runner is the intended caller.
+    # is not scheduled by anything in this process — the auto-update
+    # pipeline's job runner (below) is the intended caller.
     audit_retention_days: int = 180
+
+    # Auto-update pipeline (ai/updates) — source watcher + review gate.
+    updates_sources_path: str = str(REPO_ROOT / "ai" / "updates" / "sources.yaml")
+    updates_watcher_db_path: str = str(REPO_ROOT / "data" / "updates_watcher.sqlite3")
+    updates_queue_db_path: str = str(REPO_ROOT / "data" / "updates_queue.sqlite3")
+    updates_stage_dir: str = str(REPO_ROOT / "data" / "updates_incoming")
+    # Off by default: enabling this makes the process poll real external
+    # URLs on a schedule, which a shared/CI/demo deployment should opt
+    # into deliberately rather than inherit from a default.
+    updates_scheduler_enabled: bool = False
+    updates_interval_minutes: int = 60
+    # Whether AUTO_PUBLISH / PUBLISH_THEN_AUDIT tiers are ingested
+    # immediately by the scheduler and by "check now". False makes every
+    # tier land in the queue for a human to trigger ingestion on
+    # explicitly — a safer default for a first deployment.
+    updates_auto_ingest: bool = False
 
     llm_model: str = "claude-sonnet-4-5"
     anthropic_api_key: str | None = None

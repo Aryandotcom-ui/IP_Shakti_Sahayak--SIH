@@ -174,3 +174,92 @@ def test_configured_anthropic_key_is_forwarded_to_generation(monkeypatch):
 
     assert captured["api_key"] == "test-key"
     assert result["answer_text"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# /api/v1/updates — auto-update pipeline review gate
+# ---------------------------------------------------------------------------
+
+def test_updates_pending_lists_entries(monkeypatch):
+    from app.api import updates_routes
+
+    class FakeUpdatesService:
+        def pending(self):
+            return [{
+                "id": "e1", "source_name": "src", "url": "https://example.test/a.pdf",
+                "act_name": "The Patents Act, 1970", "jurisdiction": "india",
+                "tier": "mandatory_review", "reason": "first time seen",
+                "status": "pending", "needs_audit": False,
+                "created_at": "2026-01-01T00:00:00+00:00", "decided_at": None,
+                "decided_by": None, "notes": None, "ingest_result": None,
+            }]
+
+    monkeypatch.setattr(updates_routes, "updates_service", FakeUpdatesService())
+    response = client.get("/api/v1/updates/pending")
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["id"] == "e1"
+    assert body[0]["status"] == "pending"
+
+
+def test_updates_approve_success(monkeypatch):
+    from app.api import updates_routes
+
+    class FakeUpdatesService:
+        def approve(self, entry_id, *, decided_by, notes=None):
+            assert entry_id == "e1"
+            assert decided_by == "reviewer@example.test"
+
+    monkeypatch.setattr(updates_routes, "updates_service", FakeUpdatesService())
+    response = client.post(
+        "/api/v1/updates/e1/approve",
+        json={"decided_by": "reviewer@example.test", "notes": "ok"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"id": "e1", "status": "approved"}
+
+
+def test_updates_approve_conflict_returns_409(monkeypatch):
+    from app.api import updates_routes
+    from ai.updates.queue import ReviewQueueError
+
+    class FakeUpdatesService:
+        def approve(self, entry_id, *, decided_by, notes=None):
+            raise ReviewQueueError(f"entry {entry_id!r} is already approved")
+
+    monkeypatch.setattr(updates_routes, "updates_service", FakeUpdatesService())
+    response = client.post(
+        "/api/v1/updates/e1/approve", json={"decided_by": "reviewer@example.test"}
+    )
+    assert response.status_code == 409
+
+
+def test_updates_publish_missing_entry_returns_404(monkeypatch):
+    from app.api import updates_routes
+
+    class FakeUpdatesService:
+        def publish_entry(self, entry_id):
+            raise ValueError(f"no review-queue entry {entry_id!r}")
+
+    monkeypatch.setattr(updates_routes, "updates_service", FakeUpdatesService())
+    response = client.post("/api/v1/updates/missing/publish")
+    assert response.status_code == 404
+
+
+def test_updates_check_now_returns_summary(monkeypatch):
+    from app.api import updates_routes
+
+    class FakeUpdatesService:
+        def check_now(self, *, auto_ingest=None):
+            return {"checked": 2, "entries": [
+                {"id": "e1", "tier": "mandatory_review"},
+                {"id": "e2", "tier": "auto_publish"},
+            ]}
+
+    monkeypatch.setattr(updates_routes, "updates_service", FakeUpdatesService())
+    response = client.post("/api/v1/updates/check-now", json={})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["checked"] == 2
+    assert len(body["entries"]) == 2

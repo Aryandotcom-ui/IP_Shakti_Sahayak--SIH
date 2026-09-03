@@ -103,3 +103,47 @@ class QueryResponse(BaseModel):
 class CorpusResponse(BaseModel):
     collection: str
     chunks: int
+
+
+# ---------------------------------------------------------------------------
+# Auto-update pipeline / review gate (ai/updates)
+# ---------------------------------------------------------------------------
+
+class ReviewQueueEntry(BaseModel):
+    id: str
+    source_name: str
+    url: str
+    act_name: str
+    jurisdiction: str | None = None
+    tier: str
+    reason: str
+    status: str
+    needs_audit: bool
+    created_at: str
+    decided_at: str | None = None
+    decided_by: str | None = None
+    notes: str | None = None
+    ingest_result: str | None = None
+
+
+class ReviewDecisionRequest(BaseModel):
+    decided_by: str = Field(min_length=1, max_length=200)
+    notes: str | None = Field(default=None, max_length=2000)
+
+
+class CheckNowRequest(BaseModel):
+    # Overrides settings.updates_auto_ingest for this one call only.
+    # None (default) means "use the configured default".
+    auto_ingest: bool | None = None
+
+
+class CheckNowResponse(BaseModel):
+    checked: int
+    entries: list[dict]
+
+
+class PublishResponse(BaseModel):
+    ok: bool
+    chunks: int | None = None
+    embedder: str | None = None
+    error: str | None = None
