@@ -1,3 +1,11 @@
 
 __pycache__/
 *.pyc
+
+# Runtime-generated data: SQLite registries/queues/audit trails, the
+# Chroma vector index, and staged files from the auto-update pipeline.
+# ai/corpus.yaml and the various ai/*/README.md files document how to
+# (re)build these; none of them belong in version control.
+/data/*.sqlite3
+/data/chroma/
+/data/updates_incoming/

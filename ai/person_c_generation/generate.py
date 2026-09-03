@@ -130,11 +130,17 @@ class MockLLM:
         return json.dumps(payload)
 
 
-def call_llm(prompt: str, model: str = DEFAULT_MODEL) -> str:
+def call_llm(prompt: str, model: str = DEFAULT_MODEL, api_key: str | None = None) -> str:
     """
     Calls the Anthropic Messages API with the fully-formatted prompt as the
     user turn (the prompt already contains the system instructions, sources,
     and question per the template in prompts/system_prompt.txt).
+
+    `api_key` lets a caller that already has one configured (the backend
+    adapter, from its own settings) pass it explicitly; the CLI's
+    documented `ANTHROPIC_API_KEY` environment variable is still the
+    fallback when it is not supplied, so `python generate.py` behaves
+    exactly as before.
     """
     try:
         import anthropic  # type: ignore
@@ -145,10 +151,11 @@ def call_llm(prompt: str, model: str = DEFAULT_MODEL) -> str:
             "(or run with --mock to skip the real API call)."
         ) from e
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         raise RuntimeError(
-            "ANTHROPIC_API_KEY is not set. Export it, or run with --mock."
+            "ANTHROPIC_API_KEY is not set. Export it, pass api_key explicitly, "
+            "or run with --mock."
         )
 
     client = anthropic.Anthropic(api_key=api_key)
@@ -194,6 +201,7 @@ def generate_answer(
     model: str = DEFAULT_MODEL,
     mock: bool = False,
     prompt_template_path: Path = SYSTEM_PROMPT_PATH,
+    api_key: str | None = None,
 ) -> FinalAnswer:
     """
     Core function: retrieval_result -> final_answer.
@@ -201,6 +209,9 @@ def generate_answer(
     This is the function Person B's real retrieval output gets plugged into
     later — the signature stays the same whether `retrieval_result` came
     from the fixture file or from a live ChromaDB/SQLite-backed call.
+
+    `api_key` is forwarded to call_llm() as-is (None falls back to the
+    ANTHROPIC_API_KEY environment variable there) — see its docstring.
     """
     template = load_prompt_template(prompt_template_path)
     prompt = build_prompt(template, retrieval_result)
@@ -208,7 +219,7 @@ def generate_answer(
     if mock:
         raw = MockLLM().complete(prompt, retrieval_result)
     else:
-        raw = call_llm(prompt, model=model)
+        raw = call_llm(prompt, model=model, api_key=api_key)
 
     parsed = parse_llm_response(raw)
 

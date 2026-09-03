@@ -11,32 +11,36 @@ PDFs → extract → section → chunk → metadata → validate
 ## Install
 
 ```bash
-pip install -r requirements.txt
+pip install -r ai/requirements.txt
 ```
 
 ## Run
 
+All commands below are run from the repository root, since `ai/` is an
+importable package (`python -m ai.<module>`), not a standalone script
+directory.
+
 ```bash
 # generate test fixtures (two statutes, one scanned PDF, one corrupt file)
-python scripts/make_test_pdfs.py data/pdfs
+python -m ai.make_test_pdfs data/pdfs
 
 # chunk and validate without writing anything
-python -m ingest.cli data/pdfs --manifest manifests/corpus.yaml \
+python -m ai.cli data/pdfs --manifest ai/corpus.yaml \
     --dry-run --json-out build/chunks.json
 
 # full ingest
-python -m ingest.cli data/pdfs --manifest manifests/corpus.yaml
+python -m ai.cli data/pdfs --manifest ai/corpus.yaml
 
 # add a document that isn't in the manifest yet
-python -m ingest.cli data/pdfs/new-rules.pdf --interactive
+python -m ai.cli data/pdfs/new-rules.pdf --interactive
 
 # once the corpus is stable — refuse to guess any metadata
-python -m ingest.cli data/pdfs --manifest manifests/corpus.yaml --strict
+python -m ai.cli data/pdfs --manifest ai/corpus.yaml --strict
 
 # 5 sample chunks for whoever is building retrieval
-python scripts/dump_samples.py --from-json build/chunks.json -n 5
+python -m ai.dump_samples --from-json build/chunks.json -n 5
 
-python -m pytest tests/ -q
+python -m pytest ai/ -q
 ```
 
 Exit codes: `0` all files ingested, `1` some files failed (the rest still
