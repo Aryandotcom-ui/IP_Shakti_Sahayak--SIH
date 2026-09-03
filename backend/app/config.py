@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from typing import Annotated
 
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     # tier land in the queue for a human to trigger ingestion on
     # explicitly — a safer default for a first deployment.
     updates_auto_ingest: bool = False
+
+    # Patent preparation and tracking (ai/patent_prep) — separate from the
+    # RAG core's own SQLite stores above.
+    patent_cases_db_path: str = str(REPO_ROOT / "data" / "patent_cases.sqlite3")
 
     llm_model: str = "claude-sonnet-4-5"
     anthropic_api_key: str | None = None

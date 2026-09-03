@@ -147,3 +147,66 @@ class PublishResponse(BaseModel):
     chunks: int | None = None
     embedder: str | None = None
     error: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Patent preparation and tracking (ai/patent_prep) — separate from the RAG
+# core; these fields mirror ai.patent_prep.intake.CaseIntake and
+# ComplianceFacts/ClassificationRequest above verbatim on purpose, so no
+# translation layer has to be kept in sync across the three.
+# ---------------------------------------------------------------------------
+
+class CaseIntakeRequest(BaseModel):
+    applicant_name: str | None = None
+    applicant_address: str | None = None
+    inventors: list[str] = Field(default_factory=list, max_length=20)
+    invention_title: str | None = None
+    abstract: str | None = Field(default=None, max_length=5000)
+
+    formulation_type: FormulationType | None = None
+    source_organism: SourceOrganism | None = None
+    jurisdiction: Jurisdiction | None = None
+    applicant_category: ApplicantCategory | None = None
+    practitioner_is_registered_ayush: bool | None = None
+    resource_origin: ResourceOrigin | None = None
+    resource_cultivation: ResourceCultivation | None = None
+    uses_biological_material: bool | None = None
+    uses_codified_tk: bool | None = None
+    seeking_ipr: bool | None = None
+    ipr_already_granted: bool | None = None
+    intends_commercialisation: bool | None = None
+    formulation_name: str | None = Field(default=None, max_length=200)
+    ingredients: list[str] | None = Field(default=None, max_length=50)
+
+    # ISO 8601 dates, e.g. "2025-01-15" — anchors for deadline tracking
+    priority_date: str | None = None
+    filing_date: str | None = None
+    fer_issued_date: str | None = None
+    grant_date: str | None = None
+
+
+class CaseResponse(BaseModel):
+    id: str
+    intake: dict
+    status: str
+    precheck_result: dict | None = None
+    forms_result: dict | None = None
+    handoff_result: dict | None = None
+    created_at: str
+    updated_at: str
+
+
+class CaseEventResponse(BaseModel):
+    ts: str
+    event: str
+    detail: str | None = None
+
+
+class CaseStatusUpdateRequest(BaseModel):
+    status: str = Field(min_length=1, max_length=50)
+    detail: str | None = Field(default=None, max_length=2000)
+
+
+class HandoffRequest(BaseModel):
+    recipient: str = Field(min_length=1, max_length=200)
+    notes: str | None = Field(default=None, max_length=2000)

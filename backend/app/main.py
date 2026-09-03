@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .api.patent_prep_routes import router as patent_prep_router
 from .api.routes import router
 from .api.updates_routes import router as updates_router
 from .config import settings
@@ -53,6 +54,7 @@ app.add_middleware(
 
 app.include_router(router, prefix=settings.api_v1_prefix)
 app.include_router(updates_router, prefix=settings.api_v1_prefix)
+app.include_router(patent_prep_router, prefix=settings.api_v1_prefix)
 
 
 @app.get("/health", tags=["health"])

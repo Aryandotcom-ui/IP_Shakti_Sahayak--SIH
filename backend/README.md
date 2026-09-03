@@ -9,9 +9,11 @@ reimplementing retrieval or generation logic.
   auto-update scheduler when `UPDATES_SCHEDULER_ENABLED=true`
 - `app/api/routes.py` — `/query`, `/corpus`
 - `app/api/updates_routes.py` — `/updates/*`, the auto-update review gate
+- `app/api/patent_prep_routes.py` — `/patent-cases/*`, patent prep and tracking
 - `app/schemas.py` — Pydantic request/response contracts
 - `app/services/ai_service.py` — adapter between FastAPI and the existing AI/RAG pipeline
 - `app/services/updates_service.py` — adapter between FastAPI and `ai/updates`
+- `app/services/patent_prep_service.py` — adapter between FastAPI and `ai/patent_prep`
 - `tests/test_api.py` — backend API tests
 
 ## API endpoints
@@ -85,6 +87,30 @@ for an operator to publish explicitly.
 `decided_by` is free text, not checked against a login session — see
 `ai/updates/README.md`'s "what's a skeleton" section before exposing
 these beyond a trusted operator.
+
+### Patent preparation and tracking (`/api/v1/patent-cases/*`)
+
+Wraps `ai/patent_prep` (see its own README) — a module separate from the
+RAG core: intake, an ABS/prior-art precheck, draft form content, and
+deadline tracking for one case, ending in a handoff package for a
+registered patent agent.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /patent-cases` | Create a case from intake fields (see `CaseIntakeRequest`) |
+| `GET /patent-cases?status=...` | List cases, optionally filtered |
+| `GET /patent-cases/{id}` | Full case record |
+| `GET /patent-cases/{id}/events` | Case event history |
+| `PUT /patent-cases/{id}/intake` | Replace the intake (facts arrive over several conversations) |
+| `POST /patent-cases/{id}/precheck` | Run the ABS/prior-art screening (`ai.compliance.assess()`) |
+| `POST /patent-cases/{id}/draft-forms` | Draft Form 1 / Form 3 (and Form 27, once granted) |
+| `GET /patent-cases/{id}/deadlines` | Computed deadlines — some `review_status: draft`, confirm before relying on them |
+| `POST /patent-cases/{id}/handoff` | Bundle everything and record the handoff to an agent |
+| `POST /patent-cases/{id}/status` | Set any status, including ones this module cannot observe itself (`filed`, `granted`, ...) |
+
+Draft form content is a preparation aid, not a filed copy — see
+`ai/patent_prep/README.md`'s "Draft forms are not filled official forms"
+section.
 
 ## Setup
 

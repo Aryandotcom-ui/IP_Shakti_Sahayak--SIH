@@ -263,3 +263,124 @@ def test_updates_check_now_returns_summary(monkeypatch):
     body = response.json()
     assert body["checked"] == 2
     assert len(body["entries"]) == 2
+
+
+# ---------------------------------------------------------------------------
+# /api/v1/patent-cases — patent preparation and tracking
+# ---------------------------------------------------------------------------
+
+def test_patent_cases_create_and_get(monkeypatch):
+    from app.api import patent_prep_routes
+
+    class FakeService:
+        def create_case(self, intake_dict):
+            assert intake_dict["applicant_name"] == "Jane Doe"
+            return "case-1"
+
+        def get_case(self, case_id):
+            assert case_id == "case-1"
+            return {
+                "id": "case-1", "intake": {"applicant_name": "Jane Doe"},
+                "status": "intake", "precheck_result": None, "forms_result": None,
+                "handoff_result": None, "created_at": "2026-01-01T00:00:00+00:00",
+                "updated_at": "2026-01-01T00:00:00+00:00",
+            }
+
+    monkeypatch.setattr(patent_prep_routes, "patent_prep_service", FakeService())
+    response = client.post("/api/v1/patent-cases", json={
+        "applicant_name": "Jane Doe", "inventors": ["Jane Doe"],
+        "invention_title": "A formulation",
+    })
+    assert response.status_code == 200
+    assert response.json() == {"id": "case-1", "status": "intake"}
+
+    response = client.get("/api/v1/patent-cases/case-1")
+    assert response.status_code == 200
+    assert response.json()["status"] == "intake"
+
+
+def test_patent_cases_get_missing_returns_404(monkeypatch):
+    from app.api import patent_prep_routes
+    from ai.patent_prep.tracker import CaseNotFound
+
+    class FakeService:
+        def get_case(self, case_id):
+            raise CaseNotFound(f"no case {case_id!r}")
+
+    monkeypatch.setattr(patent_prep_routes, "patent_prep_service", FakeService())
+    response = client.get("/api/v1/patent-cases/missing")
+    assert response.status_code == 404
+
+
+def test_patent_cases_precheck(monkeypatch):
+    from app.api import patent_prep_routes
+
+    class FakeService:
+        def precheck(self, case_id):
+            assert case_id == "case-1"
+            return {"clear_to_draft": True, "reasons_not_clear": [], "blocking": [],
+                     "critical_open_questions": [], "compliance": {}}
+
+    monkeypatch.setattr(patent_prep_routes, "patent_prep_service", FakeService())
+    response = client.post("/api/v1/patent-cases/case-1/precheck")
+    assert response.status_code == 200
+    assert response.json()["clear_to_draft"] is True
+
+
+def test_patent_cases_draft_forms(monkeypatch):
+    from app.api import patent_prep_routes
+
+    class FakeService:
+        def draft_forms(self, case_id):
+            return {"form_1": {"form_id": "Form 1"}, "form_3": {"form_id": "Form 3"}}
+
+    monkeypatch.setattr(patent_prep_routes, "patent_prep_service", FakeService())
+    response = client.post("/api/v1/patent-cases/case-1/draft-forms")
+    assert response.status_code == 200
+    assert set(response.json()) == {"form_1", "form_3"}
+
+
+def test_patent_cases_deadlines(monkeypatch):
+    from app.api import patent_prep_routes
+
+    class FakeService:
+        def deadlines(self, case_id):
+            return [{"rule_id": "convention_priority", "status": "upcoming"}]
+
+    monkeypatch.setattr(patent_prep_routes, "patent_prep_service", FakeService())
+    response = client.get("/api/v1/patent-cases/case-1/deadlines")
+    assert response.status_code == 200
+    assert response.json()[0]["rule_id"] == "convention_priority"
+
+
+def test_patent_cases_handoff(monkeypatch):
+    from app.api import patent_prep_routes
+
+    class FakeService:
+        def handoff(self, case_id, *, recipient, notes=None):
+            assert recipient == "agent@example.test"
+            return {"generated_at": "2026-01-01", "intake": {}, "precheck": {},
+                     "forms": {}, "deadlines": [], "handoff_notes": []}
+
+    monkeypatch.setattr(patent_prep_routes, "patent_prep_service", FakeService())
+    response = client.post(
+        "/api/v1/patent-cases/case-1/handoff",
+        json={"recipient": "agent@example.test", "notes": "ready"},
+    )
+    assert response.status_code == 200
+    assert "handoff_notes" in response.json()
+
+
+def test_patent_cases_update_status(monkeypatch):
+    from app.api import patent_prep_routes
+
+    class FakeService:
+        def update_status(self, case_id, status, *, detail=None):
+            assert status == "filed"
+
+    monkeypatch.setattr(patent_prep_routes, "patent_prep_service", FakeService())
+    response = client.post(
+        "/api/v1/patent-cases/case-1/status", json={"status": "filed"}
+    )
+    assert response.status_code == 200
+    assert response.json() == {"id": "case-1", "status": "filed"}
