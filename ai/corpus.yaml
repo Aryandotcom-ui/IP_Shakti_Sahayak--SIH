@@ -30,6 +30,21 @@
 # same place as the names it has to match. An obligation citing a `pending`
 # instrument still fires — the duty exists in law whether or not we hold the
 # PDF — but it is reported as uncitable rather than being quietly dropped.
+#
+# ---------------------------------------------------------------------------
+# `access`
+# ---------------------------------------------------------------------------
+#   public   — (default, if omitted) freely republishable government/treaty
+#              text; citing it needs no consent from the requester
+#   licensed — under terms that restrict republication (a paid reporter
+#              series, a subscription database); ai/audit.py withholds any
+#              citation to a `licensed` act unless the API request carried
+#              consent for that query, and logs whether consent was given
+#              either way. Every document currently listed is a public
+#              government or treaty text, so no entry below sets this.
+#
+# See ai/audit.py for the consent-gating and audit-trail mechanism this
+# field feeds.
 
 documents:
   # -------------------------------------------------------------------------

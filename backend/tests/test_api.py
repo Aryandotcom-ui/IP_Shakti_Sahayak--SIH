@@ -42,7 +42,7 @@ def test_corpus_status(monkeypatch):
 
 def test_query_success(monkeypatch):
     class FakeService:
-        def answer(self, query, classification, top_k, compliance_facts=None):
+        def answer(self, query, classification, top_k, compliance_facts=None, consented_acts=None):
             assert query == "Can this be patented?"
             assert classification is not None
             assert classification.formulation_type == "classical"

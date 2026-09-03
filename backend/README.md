@@ -23,7 +23,10 @@ Reports the configured Chroma collection and number of indexed chunks.
 
 ### `POST /api/v1/query`
 
-Runs the existing retrieval → confidence/abstention → generation pipeline.
+Runs the existing retrieval → confidence/abstention → generation pipeline,
+an ABS-compliance screening off the same classification (see
+`ai/compliance`), and logs the query to the DPDP-aligned audit trail (see
+`ai/audit.py`).
 
 Example request:
 
@@ -35,9 +38,25 @@ Example request:
     "source_organism": "plant",
     "jurisdiction": "india"
   },
-  "top_k": 5
+  "top_k": 5,
+  "compliance_facts": {
+    "applicant_category": "indian_individual",
+    "resource_origin": "india"
+  },
+  "consent_licensed_acts": []
 }
 ```
+
+`consent_licensed_acts` names any `access: licensed` acts (see
+`ai/corpus.yaml`'s header) the requester consents to being answered from.
+Retrieval matching a licensed act without consent for that exact act name
+has its citation withheld — `licensed_sources_withheld` in the response
+says which. Every document currently in the corpus is public, so this is
+normally an empty list on both sides.
+
+The response also carries `audit_id`, the id of the row this query wrote
+to the audit log, and `compliance`, the ABS obligation report (`null` when
+neither a classification nor compliance facts were supplied).
 
 ## Setup
 

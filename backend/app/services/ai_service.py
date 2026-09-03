@@ -21,6 +21,7 @@ from ai.person_b_retrieval.schema import (  # noqa: E402
 from ai.store import VectorStore  # noqa: E402
 from ai.person_c_generation.generate import generate_answer  # noqa: E402
 from ai.compliance import get_assessor  # noqa: E402
+from ai.audit import AuditLog  # noqa: E402
 
 from ..config import settings  # noqa: E402
 
@@ -36,6 +37,7 @@ class AIService:
     def __init__(self) -> None:
         self._embedder: Embedder | None = None
         self._store: VectorStore | None = None
+        self._audit: AuditLog | None = None
 
     @property
     def embedder(self) -> Embedder:
@@ -54,6 +56,15 @@ class AIService:
                 collection=settings.chroma_collection,
             )
         return self._store
+
+    @property
+    def audit(self) -> AuditLog:
+        if self._audit is None:
+            self._audit = AuditLog(
+                settings.audit_db_path,
+                corpus_path=settings.corpus_manifest_path,
+            )
+        return self._audit
 
     def corpus_count(self) -> int:
         return self.store.count()
@@ -138,75 +149,139 @@ class AIService:
         classification: Classification | None,
         top_k: int,
         compliance_facts: dict[str, Any] | None = None,
+        consented_acts: set[str] | None = None,
     ) -> dict[str, Any]:
-        retrieval, source_map = self.retrieve(query, classification, top_k)
+        jurisdiction = classification.jurisdiction if classification else None
+        formulation_type = classification.formulation_type if classification else None
 
-        # If retrieval has already decided the evidence is insufficient, do not
-        # spend an LLM call trying to answer it.  This preserves the team's
-        # abstention contract and makes the API deterministic/offline for
-        # unsupported questions.
-        if retrieval.should_abstain:
-            from ai.shared.schema import FinalAnswer
+        try:
+            retrieval, source_map = self.retrieve(query, classification, top_k)
 
-            final = FinalAnswer(
-                answer_text=(
-                    "The provided sources do not clearly answer this question, "
-                    "so I can't provide a reliable answer here."
-                ),
+            # If retrieval has already decided the evidence is insufficient, do
+            # not spend an LLM call trying to answer it. This preserves the
+            # team's abstention contract and makes the API deterministic/
+            # offline for unsupported questions.
+            if retrieval.should_abstain:
+                from ai.shared.schema import FinalAnswer
+
+                final = FinalAnswer(
+                    answer_text=(
+                        "The provided sources do not clearly answer this question, "
+                        "so I can't provide a reliable answer here."
+                    ),
+                    citations=[],
+                    confidence=retrieval.confidence,
+                    abstained=True,
+                    disclaimer="This is informational, not legal advice.",
+                )
+            else:
+                final = generate_answer(
+                    retrieval,
+                    model=settings.llm_model,
+                    mock=False,
+                    api_key=settings.anthropic_api_key,
+                )
+
+            # Keep source metadata from retrieval for the UI. Generation uses
+            # the existing Shape-3/Shape-4 contract and therefore does not
+            # change those team-owned field names.
+            sources = []
+            for c in retrieval.matched_chunks:
+                meta = source_map.get(c.chunk_id, {})
+                sources.append({
+                    "chunk_id": c.chunk_id,
+                    "act_name": c.act_name,
+                    "section": c.section,
+                    "jurisdiction": c.jurisdiction,
+                    "similarity_score": c.similarity_score,
+                    "source_url": meta.get("source_url"),
+                })
+
+            citations = []
+            for c in final.citations:
+                url = next(
+                    (s["source_url"] for s in sources
+                     if s["act_name"] == c.act_name and s["section"] == c.section),
+                    None,
+                )
+                citations.append({
+                    "act_name": c.act_name,
+                    "section": c.section,
+                    "source_url": url,
+                })
+
+            # Withhold any citation/source drawn from a licensed act the
+            # request hasn't consented to. See ai/audit.py — this never
+            # touches retrieval itself (the model can still reason over a
+            # licensed chunk's text), only what is disclosed in the response.
+            gate = self.audit.gate_citations(
+                {s["act_name"] for s in sources}, consented_acts=consented_acts
+            )
+            if gate.licensed_withheld:
+                withheld = set(gate.licensed_withheld)
+                sources = [s for s in sources if s["act_name"] not in withheld]
+                citations = [c for c in citations if c["act_name"] not in withheld]
+
+            audit_id = self._log_query_safe(
+                query_text=query,
+                jurisdiction=jurisdiction,
+                formulation_type=formulation_type,
+                top_k=top_k,
+                matched_chunk_ids=[c.chunk_id for c in retrieval.matched_chunks],
+                confidence=final.confidence,
+                should_abstain=final.abstained,
+                citations=citations,
+                gate=gate,
+                disclaimer_shown=bool(final.disclaimer),
+                llm_model=None if final.abstained else settings.llm_model,
+            )
+
+            return {
+                "answer_text": final.answer_text,
+                "citations": citations,
+                "confidence": final.confidence,
+                "abstained": final.abstained,
+                "disclaimer": final.disclaimer,
+                "sources": sources,
+                # Attached even when retrieval abstained. Abstention means the
+                # corpus could not answer the question asked; it says nothing
+                # about whether an ABS obligation applies, and those are
+                # decided by the graph rather than by retrieval.
+                "compliance": self.compliance(classification, compliance_facts),
+                "licensed_sources_withheld": gate.licensed_withheld,
+                "audit_id": audit_id,
+            }
+        except Exception as exc:
+            # A query that blew up is exactly the kind of event an audit
+            # trail exists to capture — log it (best-effort) and let the
+            # caller's own error handling take it from here.
+            self._log_query_safe(
+                query_text=query,
+                jurisdiction=jurisdiction,
+                formulation_type=formulation_type,
+                top_k=top_k,
+                matched_chunk_ids=[],
+                confidence=None,
+                should_abstain=True,
                 citations=[],
-                confidence=retrieval.confidence,
-                abstained=True,
-                disclaimer="This is informational, not legal advice.",
+                gate=None,
+                disclaimer_shown=False,
+                llm_model=None,
+                error=f"{type(exc).__name__}: {exc}",
             )
-        else:
-            final = generate_answer(
-                retrieval,
-                model=settings.llm_model,
-                mock=False,
-                api_key=settings.anthropic_api_key,
-            )
+            raise
 
-        # Keep source metadata from retrieval for the UI. Generation uses the
-        # existing Shape-3/Shape-4 contract and therefore does not change
-        # those team-owned field names.
-        sources = []
-        for c in retrieval.matched_chunks:
-            meta = source_map.get(c.chunk_id, {})
-            sources.append({
-                "chunk_id": c.chunk_id,
-                "act_name": c.act_name,
-                "section": c.section,
-                "jurisdiction": c.jurisdiction,
-                "similarity_score": c.similarity_score,
-                "source_url": meta.get("source_url"),
-            })
-
-        citations = []
-        for c in final.citations:
-            url = next(
-                (s["source_url"] for s in sources
-                 if s["act_name"] == c.act_name and s["section"] == c.section),
-                None,
-            )
-            citations.append({
-                "act_name": c.act_name,
-                "section": c.section,
-                "source_url": url,
-            })
-
-        return {
-            "answer_text": final.answer_text,
-            "citations": citations,
-            "confidence": final.confidence,
-            "abstained": final.abstained,
-            "disclaimer": final.disclaimer,
-            "sources": sources,
-            # Attached even when retrieval abstained. Abstention means the
-            # corpus could not answer the question asked; it says nothing
-            # about whether an ABS obligation applies, and those are decided
-            # by the graph rather than by retrieval.
-            "compliance": self.compliance(classification, compliance_facts),
-        }
+    def _log_query_safe(self, **kwargs: Any) -> str | None:
+        """Write an audit row without letting a logging failure take down
+        the request it is trying to record. The absent audit_id is the
+        signal something is wrong with the audit store itself, which is an
+        operational problem to alert on, not a reason to refuse an answer
+        the user can still use."""
+        try:
+            return self.audit.log_query(**kwargs)
+        except Exception:  # pragma: no cover - defensive
+            logging.getLogger(__name__).exception("audit logging failed")
+            return None
 
 
 ai_service = AIService()

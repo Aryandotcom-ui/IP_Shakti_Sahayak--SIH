@@ -53,6 +53,7 @@ def query(request: QueryRequest) -> QueryResponse:
             classification,
             request.top_k,
             compliance_facts=facts,
+            consented_acts=set(request.consent_licensed_acts),
         )
         return QueryResponse(**result)
     except RuntimeError as exc:

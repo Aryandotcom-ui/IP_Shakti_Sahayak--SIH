@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     top_k: int = 5
     abstain_threshold: float = 0.20
 
+    corpus_manifest_path: str = str(REPO_ROOT / "ai" / "corpus.yaml")
+    audit_db_path: str = str(REPO_ROOT / "data" / "audit.sqlite3")
+    # DPDP storage-limitation bound for the audit trail. purge_older_than()
+    # is not scheduled by anything in this process — the gap-5 auto-update
+    # pipeline's job runner is the intended caller.
+    audit_retention_days: int = 180
+
     llm_model: str = "claude-sonnet-4-5"
     anthropic_api_key: str | None = None
 

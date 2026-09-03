@@ -54,6 +54,13 @@ class QueryRequest(BaseModel):
     classification: ClassificationRequest | None = None
     top_k: int = Field(default=5, ge=1, le=10)
     compliance_facts: ComplianceFacts | None = None
+    # act_name strings (exact match, see ai/corpus.yaml's `access` field)
+    # the requester consents to being answered from if retrieval matches a
+    # licensed source. DPDP consent has to be for a specified purpose, so
+    # this is a named list, not one blanket "yes to licensed content" flag.
+    # No document in the corpus is currently licensed, so this is normally
+    # empty — the gate exists for when one is added.
+    consent_licensed_acts: list[str] = Field(default_factory=list, max_length=50)
 
 
 class CitationResponse(BaseModel):
@@ -82,6 +89,15 @@ class QueryResponse(BaseModel):
     # ai/compliance and adding an obligation field should not require a
     # coordinated edit here. The AI-layer dataclasses are the contract.
     compliance: dict | None = None
+    # act_names whose citation was withheld because retrieval matched a
+    # licensed source the request had not consented to (see
+    # consent_licensed_acts on QueryRequest and ai/audit.py). Empty in the
+    # common case where nothing licensed matched.
+    licensed_sources_withheld: list[str] = Field(default_factory=list)
+    # The audit_log row id for this query (see ai/audit.py) — carried back
+    # so a support/compliance flow can look the request up without a
+    # separate correlation id scheme.
+    audit_id: str | None = None
 
 
 class CorpusResponse(BaseModel):
