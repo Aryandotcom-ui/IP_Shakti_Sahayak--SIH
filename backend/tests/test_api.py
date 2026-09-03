@@ -42,7 +42,8 @@ def test_corpus_status(monkeypatch):
 
 def test_query_success(monkeypatch):
     class FakeService:
-        def answer(self, query, classification, top_k, compliance_facts=None, consented_acts=None):
+        def answer(self, query, classification, top_k, compliance_facts=None,
+                   consented_acts=None, language=None):
             assert query == "Can this be patented?"
             assert classification is not None
             assert classification.formulation_type == "classical"
@@ -174,6 +175,109 @@ def test_configured_anthropic_key_is_forwarded_to_generation(monkeypatch):
 
     assert captured["api_key"] == "test-key"
     assert result["answer_text"] == "ok"
+
+
+# ---------------------------------------------------------------------------
+# ai/translation.py wiring — the multilingual request/response edge
+# ---------------------------------------------------------------------------
+
+def test_answer_translates_query_and_answer_for_hindi(monkeypatch):
+    from app.services import ai_service as service_module
+
+    captured = {}
+
+    def fake_generate_answer(retrieval, model, mock, api_key=None):
+        captured["retrieval_query"] = retrieval.query  # what the LLM saw
+        from ai.shared.schema import FinalAnswer
+        return FinalAnswer(
+            answer_text="Yes, it can be patented.", citations=[],
+            confidence=retrieval.confidence, abstained=False,
+            disclaimer="This is informational, not legal advice.",
+        )
+
+    class FakeService(service_module.AIService):
+        def retrieve(self, query, classification, top_k):
+            captured["retrieve_query"] = query
+            from ai.person_b_retrieval.schema import MatchedChunk, RetrievalResult
+            chunk = MatchedChunk(
+                chunk_id="c1", text="source", act_name="The Patents Act, 1970",
+                section="3", jurisdiction="india", similarity_score=0.9,
+            )
+            r = RetrievalResult(query=query, matched_chunks=[chunk],
+                                 confidence=0.9, should_abstain=False)
+            return r, {"c1": {"source_url": "https://example.com"}}
+
+    monkeypatch.setattr(service_module, "generate_answer", fake_generate_answer)
+    result = FakeService().answer(
+        "क्या यह पेटेंट हो सकता है?", None, 1, language="hi"
+    )
+
+    assert result["language"] == "hi"
+    # No Bhashini credentials configured in tests -> NullTranslator ->
+    # translated=False, text stays English rather than being fabricated.
+    assert result["translated"] is False
+    assert result["answer_text"] == "Yes, it can be patented."
+    # Retrieval and generation both ran on the (untranslated, since no
+    # backend) query -- the point being it's the SAME text passed through
+    # to both, not that it changed language here.
+    assert captured["retrieve_query"] == captured["retrieval_query"]
+    # Citations are never touched by translation.
+    assert result["citations"] == [] or all(
+        "act_name" in c for c in result["citations"]
+    )
+
+
+def test_answer_english_query_is_untranslated_and_flagged_translated_true(monkeypatch):
+    from app.services import ai_service as service_module
+
+    def fake_generate_answer(retrieval, model, mock, api_key=None):
+        from ai.shared.schema import FinalAnswer
+        return FinalAnswer(
+            answer_text="Yes.", citations=[], confidence=retrieval.confidence,
+            abstained=False, disclaimer="This is informational, not legal advice.",
+        )
+
+    class FakeService(service_module.AIService):
+        def retrieve(self, query, classification, top_k):
+            from ai.person_b_retrieval.schema import MatchedChunk, RetrievalResult
+            chunk = MatchedChunk(
+                chunk_id="c1", text="source", act_name="Act", section="1",
+                jurisdiction="india", similarity_score=0.9,
+            )
+            r = RetrievalResult(query=query, matched_chunks=[chunk],
+                                 confidence=0.9, should_abstain=False)
+            return r, {"c1": {"source_url": "https://example.com"}}
+
+    monkeypatch.setattr(service_module, "generate_answer", fake_generate_answer)
+    result = FakeService().answer("Can this be patented?", None, 1)
+
+    assert result["language"] == "en"
+    assert result["translated"] is True  # trivial identity, not a degraded case
+    assert result["answer_text"] == "Yes."
+
+
+def test_query_endpoint_accepts_language_field(monkeypatch):
+    from app.api import routes
+
+    captured = {}
+
+    class FakeService:
+        def answer(self, query, classification, top_k, compliance_facts=None,
+                   consented_acts=None, language=None):
+            captured["language"] = language
+            return {
+                "answer_text": "ok", "citations": [], "confidence": 0.5,
+                "abstained": False, "disclaimer": "d", "sources": [],
+                "language": language or "en", "translated": True,
+            }
+
+    monkeypatch.setattr(routes, "ai_service", FakeService())
+    response = client.post(
+        "/api/v1/query", json={"query": "क्या यह पेटेंट हो सकता है?", "language": "hi"}
+    )
+    assert response.status_code == 200
+    assert captured["language"] == "hi"
+    assert response.json()["language"] == "hi"
 
 
 # ---------------------------------------------------------------------------

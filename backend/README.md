@@ -48,7 +48,8 @@ Example request:
     "applicant_category": "indian_individual",
     "resource_origin": "india"
   },
-  "consent_licensed_acts": []
+  "consent_licensed_acts": [],
+  "language": null
 }
 ```
 
@@ -59,9 +60,21 @@ has its citation withheld — `licensed_sources_withheld` in the response
 says which. Every document currently in the corpus is public, so this is
 normally an empty list on both sides.
 
+`language` is an explicit source-language override (e.g. `"hi"`, `"ta"`);
+omit it to auto-detect from the query text (see `ai/translation.py` — a
+Unicode-script heuristic, not a language-ID model, so pass this when the
+caller actually knows the language). The query is translated to English
+before retrieval (`ai/embedder.py`'s default model is English-only) and
+the answer translates back; citations and `act_name` are never
+translated. Without `BHASHINI_API_KEY`/`BHASHINI_USER_ID` configured,
+text passes through untranslated and the response's `translated` field
+is `false` — the answer is still correct, just not delivered in the
+requester's language.
+
 The response also carries `audit_id`, the id of the row this query wrote
-to the audit log, and `compliance`, the ABS obligation report (`null` when
-neither a classification nor compliance facts were supplied).
+to the audit log, `compliance`, the ABS obligation report (`null` when
+neither a classification nor compliance facts were supplied), `language`
+(the language `answer_text`/`disclaimer` are in), and `translated`.
 
 ### Auto-update pipeline (`/api/v1/updates/*`)
 

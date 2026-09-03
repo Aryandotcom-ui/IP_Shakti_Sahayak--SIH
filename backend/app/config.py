@@ -58,6 +58,12 @@ class Settings(BaseSettings):
     llm_model: str = "claude-sonnet-4-5"
     anthropic_api_key: str | None = None
 
+    # Multilingual request/response edge (ai/translation.py). Without both
+    # set, queries and answers pass through untranslated — see
+    # ai.translation.NullTranslator.
+    bhashini_api_key: str | None = None
+    bhashini_user_id: str | None = None
+
     model_config = SettingsConfigDict(
         # Support .env at the repo root and backend/.env; the latter wins.
         env_file=(REPO_ROOT / ".env", REPO_ROOT / "backend" / ".env"),

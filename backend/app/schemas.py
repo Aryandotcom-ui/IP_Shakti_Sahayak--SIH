@@ -61,6 +61,12 @@ class QueryRequest(BaseModel):
     # No document in the corpus is currently licensed, so this is normally
     # empty — the gate exists for when one is added.
     consent_licensed_acts: list[str] = Field(default_factory=list, max_length=50)
+    # Explicit source-language override, e.g. "hi", "ta" — see
+    # ai/translation.py. Omit to auto-detect from the query text; the
+    # detector is a Unicode-script heuristic (Devanagari, Tamil, ...), not
+    # a language-ID model, so pass this when the caller actually knows the
+    # language (a language picker in the UI, say).
+    language: str | None = Field(default=None, max_length=10)
 
 
 class CitationResponse(BaseModel):
@@ -98,6 +104,13 @@ class QueryResponse(BaseModel):
     # so a support/compliance flow can look the request up without a
     # separate correlation id scheme.
     audit_id: str | None = None
+    # The language answer_text/disclaimer are in — the request's explicit
+    # `language`, or the detected one. See ai/translation.py.
+    language: str = "en"
+    # False means answer_text/disclaimer are still English: no translation
+    # backend is configured (ai.translation.NullTranslator) or the
+    # translation attempt failed, not that the answer itself is wrong.
+    translated: bool = True
 
 
 class CorpusResponse(BaseModel):
