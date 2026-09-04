@@ -33,6 +33,21 @@ die() { printf '\n\033[1;31mError:\033[0m %s\n' "$1" >&2; exit 1; }
 
 command -v "$PY" >/dev/null || die "python3 not found. Install Python 3.11 or newer."
 
+# Refuse to start on an occupied port. Without this the health check below
+# is answered by whatever is already listening, so a failed start reports
+# success and you spend the next hour debugging a server that never ran.
+port_busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null && { exec 3<&-; return 0; }; return 1; }
+check_port() {
+  port_busy "$1" || return 0
+  die "port $1 is already in use, and that would silently shadow the server
+  this script is trying to start. Stop the other process first:
+
+    lsof -ti :$1 | xargs kill      # macOS / Linux with lsof
+    fuser -k $1/tcp                # Linux with psmisc
+
+  Most often it is an earlier run of this script that was not shut down."
+}
+
 # --- dependencies ---------------------------------------------------------
 if ! "$PY" -c "import fastapi, chromadb, sklearn, fitz" 2>/dev/null; then
   say "Installing Python dependencies (a few minutes the first time)"
@@ -63,6 +78,7 @@ cleanup() { [ -n "${API_PID:-}" ] && kill "$API_PID" 2>/dev/null || true
             [ -n "${WEB_PID:-}" ] && kill "$WEB_PID" 2>/dev/null || true; }
 trap cleanup EXIT INT TERM
 
+check_port 8000
 say "Starting the API on http://localhost:8000"
 ( cd backend && exec "$PY" -m uvicorn app.main:app --host 127.0.0.1 --port 8000 ) &
 API_PID=$!
@@ -96,25 +112,14 @@ if [ "$BACKEND_ONLY" = 1 ]; then
 fi
 
 # --- web UI ---------------------------------------------------------------
-# The UI lives in the companion repository. Look for it as a sibling of
-# this checkout, which is what cloning both side by side produces.
-FRONTEND=""
-for cand in "$ROOT/frontend" \
-            "$ROOT/../IP_Shakti_Sahayak--SIH--AI/frontend" \
-            "$ROOT/../ip_shakti_sahayak--sih--ai/frontend"; do
-  [ -f "$cand/package.json" ] && { FRONTEND=$cand; break; }
-done
-
-if [ -z "$FRONTEND" ]; then
+FRONTEND="$ROOT/frontend"
+if [ ! -f "$FRONTEND/package.json" ]; then
   cat <<NOTE
 
-  The web UI was not found. It lives in the companion repository; clone it
-  next to this one and re-run:
+  frontend/ is missing or incomplete, so only the API is running:
+  http://localhost:8000/docs
 
-    git clone https://github.com/Aryandotcom-ui/IP_Shakti_Sahayak--SIH--AI.git \\
-      "$(cd "$ROOT/.." && pwd)/IP_Shakti_Sahayak--SIH--AI"
-
-  The API is running in the meantime: http://localhost:8000/docs
+  If this is a partial checkout, restore it with:  git checkout -- frontend
 NOTE
   wait "$API_PID"; exit 0
 fi
@@ -126,9 +131,10 @@ if [ ! -d "$FRONTEND/node_modules" ]; then
   ( cd "$FRONTEND" && npm install --no-fund --no-audit ) || die "npm install failed"
 fi
 
+check_port 5173
 say "Starting the web UI"
 ( cd "$FRONTEND" && VITE_API_TARGET=http://127.0.0.1:8000 \
-    exec npm run dev -- --host 127.0.0.1 --port 5173 ) &
+    exec npm run dev -- --host 127.0.0.1 --port 5173 --strictPort ) &
 WEB_PID=$!
 
 for _ in $(seq 1 45); do

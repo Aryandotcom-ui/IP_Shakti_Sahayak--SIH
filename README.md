@@ -35,20 +35,6 @@ Other options:
 ./scripts/run.sh --rebuild    # discard and rebuild the search index
 ```
 
-### The web UI lives in a second repository
-
-The React frontend is in
-[IP_Shakti_Sahayak--SIH--AI](https://github.com/Aryandotcom-ui/IP_Shakti_Sahayak--SIH--AI).
-Clone it beside this one and `run.sh` finds it automatically:
-
-```
-parent/
-├── IP_Shakti_Sahayak--SIH/        <- this repo (API, RAG, corpus)
-└── IP_Shakti_Sahayak--SIH--AI/    <- the web UI
-```
-
-Without it, `run.sh` still serves the API and tells you how to get the UI.
-
 ### Generated answer wording is off by default
 
 Set `ANTHROPIC_API_KEY` to have a model write the prose:
@@ -75,6 +61,7 @@ is the failure this project exists to prevent, so the label is not optional.
 | `ai/audit.py` | DPDP-aligned audit trail and licensed-source citation gate |
 | `ai/translation.py` | Bhashini translation; retrieval always runs on English |
 | `backend/` | FastAPI service over the above |
+| `frontend/` | React web UI (Vite), proxied to the API in development |
 | `data/pdfs/` | The 17-document legal corpus (statutes, rules, treaties, guidelines) |
 
 The search index (`data/chroma/`) is **not** in version control. It is

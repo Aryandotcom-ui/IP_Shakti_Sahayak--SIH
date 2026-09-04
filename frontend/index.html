@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IP-SAKTI Sahayak — Ayurvedic IP & regulatory guidance</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="description" content="Ask questions about Ayurvedic intellectual property and regulation, and get answers grounded in cited law — with automatic access-and-benefit-sharing compliance screening." />
+    <!-- Fonts are self-hosted (public/fonts) rather than pulled from the
+         Google Fonts CDN: a hackathon venue's wifi is not a dependency
+         the demo should have, and it keeps first paint off the network. -->
+    <link rel="stylesheet" href="/fonts/fonts.css" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- Opening this file from a file manager is the most common way to
+         land on a broken page: the app below is compiled by Vite when it
+         is requested over HTTP, and a file:// page has no origin from
+         which to reach the API. Say so, rather than rendering a blank
+         screen or a UI permanently stuck on sample data. -->
+    <script>
+      if (location.protocol === 'file:') {
+        document.body.innerHTML =
+          '<div style="max-width:34rem;margin:12vh auto;padding:0 1.5rem;' +
+          'font:15px/1.65 system-ui,sans-serif;color:#1c1917">' +
+          '<h1 style="font-size:1.35rem;margin:0 0 .75rem">Open this over HTTP, not as a file</h1>' +
+          '<p style="margin:0 0 1rem">This page is built when a dev server requests it, and it ' +
+          'needs an API to answer from. Neither works over <code>file://</code>.</p>' +
+          '<p style="margin:0 0 .5rem">From the <code>IP_Shakti_Sahayak--SIH</code> checkout, run:</p>' +
+          '<pre style="background:#f5f5f4;padding:.85rem 1rem;border-radius:8px;overflow-x:auto;' +
+          'margin:0 0 1rem"><code>./scripts/run.sh</code></pre>' +
+          '<p style="margin:0">Then open <a href="http://localhost:5173">http://localhost:5173</a>. ' +
+          'That starts the API and this UI together.</p></div>';
+      }
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
