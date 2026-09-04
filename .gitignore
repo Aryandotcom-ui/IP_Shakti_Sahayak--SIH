@@ -9,3 +9,7 @@ __pycache__/
 /data/*.sqlite3
 /data/chroma/
 /data/updates_incoming/
+
+# Dry-run / chunk-dump output from `python -m ai.cli --json-out`.
+# Regenerable from the PDFs in data/pdfs; never the source of truth.
+/build/
