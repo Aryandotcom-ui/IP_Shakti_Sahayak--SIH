@@ -226,7 +226,7 @@ documents:
       priority: medium
 
   - file: geographical-indications-act-1999.pdf
-    status: pending
+    status: ingested
     jurisdiction: india
     instrument_type: statute
     act_name: "The Geographical Indications of Goods (Registration and Protection) Act, 1999"

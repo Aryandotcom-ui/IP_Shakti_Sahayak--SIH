@@ -48,11 +48,28 @@ class AIService:
 
     @property
     def embedder(self) -> Embedder:
+        """The embedder must be the one the index was built with.
+
+        If a fitted TF-IDF vectorizer is sitting beside the Chroma index,
+        that is definitive: the index was built from that vector space and
+        encoding queries with anything else puts them in a different one,
+        which degrades retrieval to noise without raising. So the artifact
+        wins over the configured model name rather than the other way
+        round.
+        """
         if self._embedder is None:
-            self._embedder = get_embedder(
-                settings.embedding_model,
-                device=settings.embedding_device,
-            )
+            from ai.embedder import TfidfEmbedder
+            artifact = Path(settings.chroma_path) / TfidfEmbedder.ARTIFACT_NAME
+            if artifact.is_file():
+                logging.getLogger(__name__).info(
+                    "loading TF-IDF vectorizer saved with the index (%s)", artifact
+                )
+                self._embedder = TfidfEmbedder.load(settings.chroma_path)
+            else:
+                self._embedder = get_embedder(
+                    settings.embedding_model,
+                    device=settings.embedding_device,
+                )
         return self._embedder
 
     @property
@@ -184,6 +201,7 @@ class AIService:
         english_query = query_translation.text
 
         try:
+            generation_mode = "none"   # abstention writes its own text
             retrieval, source_map = self.retrieve(english_query, classification, top_k)
 
             # If retrieval has already decided the evidence is insufficient, do
@@ -204,12 +222,20 @@ class AIService:
                     disclaimer="This is informational, not legal advice.",
                 )
             else:
+                # Without a key the LLM step cannot run. Falling back to the
+                # deterministic MockLLM keeps retrieval, citations and the
+                # compliance screening demonstrable — but a canned paragraph
+                # presented as a generated answer would be precisely the
+                # dishonesty this system exists to prevent, so the mode is
+                # reported in the response and the UI must surface it.
+                use_mock = not settings.anthropic_api_key
                 final = generate_answer(
                     retrieval,
                     model=settings.llm_model,
-                    mock=False,
+                    mock=use_mock,
                     api_key=settings.anthropic_api_key,
                 )
+                generation_mode = "mock" if use_mock else "live"
 
             # Keep source metadata from retrieval for the UI. Generation uses
             # the existing Shape-3/Shape-4 contract and therefore does not
@@ -290,6 +316,10 @@ class AIService:
                 "compliance": self.compliance(classification, compliance_facts),
                 "licensed_sources_withheld": gate.licensed_withheld,
                 "audit_id": audit_id,
+                # "live" (a real model call), "mock" (no API key configured —
+                # the prose is canned, the citations and screening are not),
+                # or "none" (abstained, so no generation happened).
+                "generation": generation_mode,
                 "language": source_language,
                 # False means the text above is still English because no
                 # translation backend is configured or it failed — the

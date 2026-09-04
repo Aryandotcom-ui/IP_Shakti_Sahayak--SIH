@@ -104,6 +104,14 @@ class QueryResponse(BaseModel):
     # so a support/compliance flow can look the request up without a
     # separate correlation id scheme.
     audit_id: str | None = None
+    # How answer_text was produced: "live" (a real model call), "mock" (no
+    # ANTHROPIC_API_KEY configured, so the prose is a deterministic canned
+    # stand-in — the citations, sources and compliance screening around it
+    # are still real), or "none" (the system abstained, so no generation
+    # ran at all). The UI must show this: canned prose passed off as a
+    # generated answer is the failure mode this whole project exists to
+    # avoid.
+    generation: str | None = None
     # The language answer_text/disclaimer are in — the request's explicit
     # `language`, or the detected one. See ai/translation.py.
     language: str = "en"

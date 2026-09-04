@@ -112,12 +112,143 @@ class HashingEmbedder:
         return self.encode(texts)
 
 
+class TfidfEmbedder:
+    """Offline embeddings that are actually about the words in the text.
+
+    Why this exists alongside HashingEmbedder: the hashing fallback is
+    deliberately meaningless, so an index built with it cannot be used to
+    answer anything. On a machine that cannot reach the model host — an
+    air-gapped deployment, a demo venue, a sandbox with an egress policy —
+    that leaves no way to build a *usable* index at all. TF-IDF over
+    character n-grams is crude next to a sentence-transformer, but it is
+    directionally semantic: it puts "patentability" near "patented", which
+    is enough to retrieve the right section far more often than chance.
+    ai/person_b_retrieval/embeddings.py already relies on that property.
+
+    The catch, and the reason this class carries state the others do not:
+    TF-IDF has no fixed vector space. The vocabulary is learned from the
+    corpus, so a query can only be compared against the index if it is
+    transformed by the *same fitted vectorizer*. Fit once at ingest, save
+    it beside the Chroma index, and load it at query time. Encoding a
+    query against a differently-fitted vectorizer silently produces
+    coordinates in another space and retrieval degrades to noise without
+    raising anything — so `encode`/`encode_query` refuse to run unfitted
+    rather than let that happen.
+
+    Not the shipping default. `SentenceTransformerEmbedder` remains that;
+    this is what you reach for when the weights are genuinely unreachable.
+    """
+
+    #: Where the fitted vectorizer is persisted, relative to the Chroma dir.
+    ARTIFACT_NAME = "tfidf-vectorizer.joblib"
+
+    def __init__(self, dimension: int = 384) -> None:
+        self.name = f"tfidf-{dimension}"
+        self.dimension = dimension
+        self._vec = None
+        self._svd = None
+
+    # -- lifecycle ------------------------------------------------------
+
+    @property
+    def fitted(self) -> bool:
+        return self._vec is not None and self._svd is not None
+
+    def fit(self, texts: Sequence[str]) -> "TfidfEmbedder":
+        """Learn the vocabulary, then project to a fixed width.
+
+        Chroma needs every vector in a collection to have the same
+        dimension, and a raw TF-IDF matrix is as wide as the vocabulary.
+        TruncatedSVD reduces it to `dimension` — that is latent semantic
+        analysis, which also buys a little synonym tolerance over raw
+        term matching.
+        """
+        from sklearn.decomposition import TruncatedSVD
+        from sklearn.feature_extraction.text import TfidfVectorizer
+
+        # min_df=2 drops terms seen in only one document, which is useful
+        # noise control on a real corpus and destructive on a small one —
+        # on a handful of texts it can strip the vocabulary to a single
+        # feature, below what TruncatedSVD will accept. Only filter once
+        # there is enough corpus for "rare" to mean anything.
+        self._vec = TfidfVectorizer(
+            analyzer="char_wb",      # survives the morphology of legal English
+            ngram_range=(3, 5),
+            min_df=2 if len(texts) >= 50 else 1,
+            max_features=60000,
+            sublinear_tf=True,
+        )
+        matrix = self._vec.fit_transform(texts)
+        # SVD cannot ask for more components than the matrix has rows or
+        # columns. On a tiny corpus min_df can collapse the vocabulary to
+        # almost nothing, so floor at 1 rather than letting a computed 0
+        # reach TruncatedSVD as an opaque parameter error.
+        n = max(1, min(self.dimension, matrix.shape[1] - 1, matrix.shape[0] - 1))
+        self._svd = TruncatedSVD(n_components=n, random_state=0)
+        self._svd.fit(matrix)
+        self.dimension = n
+        self.name = f"tfidf-{n}"
+        log.info("fitted TF-IDF embedder on %d texts -> %d dims", len(texts), n)
+        return self
+
+    def save(self, directory) -> None:
+        import joblib
+        from pathlib import Path
+
+        path = Path(directory)
+        path.mkdir(parents=True, exist_ok=True)
+        joblib.dump({"vec": self._vec, "svd": self._svd, "dim": self.dimension},
+                    path / self.ARTIFACT_NAME)
+        log.info("saved TF-IDF vectorizer to %s", path / self.ARTIFACT_NAME)
+
+    @classmethod
+    def load(cls, directory) -> "TfidfEmbedder":
+        import joblib
+        from pathlib import Path
+
+        blob = joblib.load(Path(directory) / cls.ARTIFACT_NAME)
+        emb = cls(dimension=blob["dim"])
+        emb._vec, emb._svd = blob["vec"], blob["svd"]
+        emb.name = f"tfidf-{blob['dim']}"
+        return emb
+
+    # -- encoding -------------------------------------------------------
+
+    def _transform(self, texts: Sequence[str]) -> list[list[float]]:
+        if not self.fitted:
+            raise RuntimeError(
+                "TfidfEmbedder used before fit(). A query encoded against an "
+                "unfitted vectorizer lands in a different vector space than "
+                "the index, which degrades retrieval to noise silently. Call "
+                "fit() during ingest and load() the saved artifact at query time."
+            )
+        reduced = self._svd.transform(self._vec.transform(texts))
+        out = []
+        for row in reduced:
+            norm = float((row @ row) ** 0.5) or 1.0
+            out.append([float(v) / norm for v in row])
+        return out
+
+    def encode(self, texts: Sequence[str]) -> list[list[float]]:
+        return self._transform(texts)
+
+    def encode_query(self, texts: Sequence[str]) -> list[list[float]]:
+        # No query/passage asymmetry here: unlike bge-*, there are no
+        # prefixes to honour, and the same fitted space serves both sides.
+        return self._transform(texts)
+
+
 def get_embedder(
     model_name: str = DEFAULT_MODEL,
     *,
     allow_fallback: bool = False,
     device: str | None = None,
 ) -> Embedder:
+    # An explicit request for the offline backend is not a "fallback" and
+    # should not warn like one — it is a deliberate choice for a machine
+    # that cannot reach the model host.
+    if model_name == "tfidf":
+        return TfidfEmbedder()
     try:
         return SentenceTransformerEmbedder(model_name, device=device)
     except Exception as exc:

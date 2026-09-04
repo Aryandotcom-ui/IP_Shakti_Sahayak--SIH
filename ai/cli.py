@@ -41,7 +41,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--manifest", default=None, help="YAML/JSON metadata manifest")
     ap.add_argument("--chroma-path", default="data/chroma")
     ap.add_argument("--sqlite-path", default="data/registry.sqlite3")
-    ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--model", default=DEFAULT_MODEL,
+                    help="embedding model, or 'tfidf' for the offline "
+                         "backend that needs no downloaded weights")
     ap.add_argument("--device", default=None, help="cpu | cuda | mps")
     ap.add_argument("--allow-fallback-embeddings", action="store_true",
                     help="run with placeholder vectors if the model is unavailable")
@@ -106,6 +108,13 @@ def main(argv: list[str] | None = None) -> int:
             strict=args.strict,
             dry_run=args.dry_run,
         )
+        # A fitted TF-IDF space is only useful if the query side can be
+        # transformed by the same vectorizer, so persist it beside the
+        # index it describes. Without this the retrieval service would
+        # re-fit on whatever it happened to have and land queries in a
+        # different space than the chunks.
+        if not args.dry_run and hasattr(embedder, "save"):
+            embedder.save(args.chroma_path)
     finally:
         registry.close()
 
