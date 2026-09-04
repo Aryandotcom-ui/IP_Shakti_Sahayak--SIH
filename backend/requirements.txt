@@ -7,6 +7,20 @@ pydantic-settings>=2.4,<3.0
 # Existing AI/RAG runtime dependencies used by the backend adapter
 pymupdf>=1.24
 chromadb>=0.5
-sentence-transformers>=3.0
 PyYAML>=6.0
 anthropic>=0.40
+
+# The offline embedding backend (ai/embedder.py TfidfEmbedder). The API
+# loads the fitted vectorizer saved beside the Chroma index, so these are
+# required at query time, not just at ingest time.
+scikit-learn>=1.3
+joblib>=1.3
+
+# Optional neural embedding backend — see ai/requirements.txt.
+# sentence-transformers>=3.0
+
+# Auto-update pipeline (ai/updates) source-watcher scheduler. Optional at
+# runtime — ai/updates/scheduler.py degrades to a warning and no-op if
+# this is not installed, but it is listed here since UPDATES_SCHEDULER_ENABLED
+# needs it to actually run on a schedule.
+apscheduler>=3.10,<4.0

@@ -205,6 +205,15 @@ def ingest(
     stats, dirty = registry.upsert(all_chunks)
     report.stats = stats
 
+    # A TF-IDF-style embedder learns its vector space from the corpus, so
+    # it has to see the text before it can encode any of it. Fit on every
+    # chunk rather than only the dirty ones: the vocabulary should describe
+    # the whole corpus, or a re-ingest of two changed files would silently
+    # rebuild the space around those two files.
+    if dirty and vector_store is not None and hasattr(embedder, "fit"):
+        if not getattr(embedder, "fitted", True):
+            embedder.fit([c.text for c in all_chunks])
+
     if dirty and vector_store is not None:
         log.info("embedding %d new/changed chunks", len(dirty))
         # Batch so a large corpus does not build one enormous list.

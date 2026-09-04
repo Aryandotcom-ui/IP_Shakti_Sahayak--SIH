@@ -17,7 +17,11 @@ from dataclasses import dataclass, field
 from typing import Any, Literal, get_args
 
 Jurisdiction = Literal["india", "international"]
-InstrumentType = Literal["statute", "rule", "treaty", "case_law"]
+InstrumentType = Literal["statute", "rule", "treaty", "case_law", "guideline"]
+# "guideline" covers regulator practice guidance that is not itself law but
+# governs how the law is applied — e.g. the IPO's examination guidelines for
+# AYUSH-related inventions. Typing those as "statute" would overstate their
+# force; leaving them out of the vocabulary pushed them there by default.
 
 JURISDICTIONS: tuple[str, ...] = get_args(Jurisdiction)
 INSTRUMENT_TYPES: tuple[str, ...] = get_args(InstrumentType)

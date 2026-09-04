@@ -1,0 +1,98 @@
+# ai/patent_prep/deadlines.yaml
+#
+# Deadline rules for patent-prosecution tracking. Each rule names the
+# CaseIntake date field it counts from (`anchor`), how far out it falls
+# (`offset_months`, calendar-month arithmetic — not offset_days*30, since
+# "12 months" and "365 days" are not the same date once a leap year is
+# involved and these are legally exact periods), and `review_status`,
+# the same field ai/knowledge_graph/ontology.yaml uses for an obligation
+# that has not been signed off on.
+#
+# ---------------------------------------------------------------------------
+# `review_status`
+# ---------------------------------------------------------------------------
+#   verified — a long-standing treaty-level period, unlikely to have
+#              changed and not dependent on the 2024 domestic rules
+#              amendment
+#   draft    — this module's best understanding of a domestic procedural
+#              deadline, entered without direct access to the amended
+#              rule text (ai/corpus.yaml's patents-rules-2003.pdf entry
+#              is still `status: pending`). CONFIRM against the Patents
+#              Rules, 2003 as amended by the Patents (Amendment) Rules,
+#              2024 before relying on any `draft` rule in production —
+#              see that corpus.yaml entry's acquisition note. Every
+#              computed deadline from a `draft` rule carries this flag
+#              through so a caller can render it distinctly (e.g. "verify
+#              this date" rather than presenting it as settled).
+
+rules:
+  - id: convention_priority
+    label: File a convention application claiming this priority
+    anchor: priority_date
+    offset_months: 12
+    legal_basis:
+      act_name: "Paris Convention for the Protection of Industrial Property"
+      section: "Article 4C(1)"
+    review_status: verified
+    note: >-
+      The 12-month Paris Convention priority period. Long-standing treaty
+      law, not domestic rules, so unaffected by the 2024 amendment.
+
+  - id: pct_national_phase
+    label: Enter national phase in India from a PCT application
+    anchor: priority_date
+    offset_months: 31
+    legal_basis:
+      act_name: "Patent Cooperation Treaty"
+      section: "Article 22, Rule 159 (national phase entry)"
+    review_status: verified
+    note: >-
+      The standard 31-month PCT national-phase deadline. Applies to the
+      PCT route only, not a direct India filing — see
+      request_for_examination below for that.
+
+  - id: request_for_examination
+    label: File a request for examination (Form 18)
+    anchor: priority_date
+    offset_months: 31
+    legal_basis:
+      act_name: "The Patents Rules, 2003"
+      section: "Rule 24B (as amended)"
+    review_status: draft
+    note: >-
+      Historically 48 months from priority; the Patents (Amendment)
+      Rules, 2024 is understood to have reduced this to 31 months for
+      applications it covers. CONFIRM the figure and its applicability
+      (filing date, transitional provisions) against the amended rule
+      text before relying on this in production.
+
+  - id: fer_response
+    label: Respond to the First Examination Report
+    anchor: fer_issued_date
+    offset_months: 6
+    legal_basis:
+      act_name: "The Patents Rules, 2003"
+      section: "Rule 24B(6)"
+    review_status: draft
+    note: >-
+      6 months from FER issuance, historically extendable by a further 3
+      months on request. CONFIRM the current figure and whether the
+      extension mechanism still applies post-2024-amendment before
+      relying on this.
+
+  - id: form_27_working_statement
+    label: File the statement of working (Form 27)
+    anchor: grant_date
+    offset_months: 36
+    recurring_every_months: 36
+    legal_basis:
+      act_name: "The Patents Rules, 2003"
+      section: "Rule 131"
+    review_status: draft
+    note: >-
+      The Patents (Amendment) Rules, 2024 is understood to have changed
+      Form 27 from an annual filing to once every 3 financial years —
+      the same change ai/corpus.yaml's patents-rules-2003.pdf acquisition
+      note already flags. CONFIRM the cadence and whether it runs from
+      financial years (not the grant anniversary, which this rule uses
+      as an approximation) before relying on this.

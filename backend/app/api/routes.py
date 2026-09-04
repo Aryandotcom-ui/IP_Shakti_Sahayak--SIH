@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 
 from ..schemas import (
     ClassificationRequest,
+    ComplianceFacts,
     CorpusResponse,
     QueryRequest,
     QueryResponse,
@@ -35,11 +36,25 @@ def query(request: QueryRequest) -> QueryResponse:
                 jurisdiction=c.jurisdiction,
             )
 
+    # exclude_none matters: the compliance layer distinguishes "unknown"
+    # (ask the user) from False. Serialising unset optionals as None and
+    # passing them through would let the context layer see an explicit None
+    # where it should see an absent key, which is the same value here but
+    # would stop being so the moment a default changes.
+    facts = (
+        request.compliance_facts.model_dump(exclude_none=True)
+        if request.compliance_facts
+        else None
+    )
+
     try:
         result = ai_service.answer(
             request.query,
             classification,
             request.top_k,
+            compliance_facts=facts,
+            consented_acts=set(request.consent_licensed_acts),
+            language=request.language,
         )
         return QueryResponse(**result)
     except RuntimeError as exc:

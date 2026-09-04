@@ -1,4 +1,14 @@
 pymupdf>=1.24
 chromadb>=0.5
-sentence-transformers>=3.0
 PyYAML>=6.0
+
+# The offline embedding backend (--model tfidf). Needed to build or query
+# the index on a machine that cannot download model weights, which is the
+# default path in scripts/run.sh.
+scikit-learn>=1.3
+joblib>=1.3
+
+# Optional: the neural embedding backend. ~90MB of weights on first use,
+# and the index must be rebuilt if you switch to it, since queries have to
+# be encoded in the same vector space as the chunks.
+# sentence-transformers>=3.0

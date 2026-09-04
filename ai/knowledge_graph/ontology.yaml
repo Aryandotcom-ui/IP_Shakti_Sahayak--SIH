@@ -1,0 +1,545 @@
+# IP-SAKTI regulatory knowledge graph.
+#
+# This file is DATA, not code. Domain reviewers should be able to edit it
+# without touching Python. graph.py only loads and traverses it.
+#
+# ---------------------------------------------------------------------------
+# LEGAL ACCURACY NOTICE
+# ---------------------------------------------------------------------------
+# Every obligation below carries a `legal_basis` naming the instrument and
+# provision it comes from. That is deliberate and load-bearing: it is what
+# makes this graph auditable rather than asserted. `graph.validate_against_
+# corpus()` checks each legal_basis against ai/corpus.yaml and reports any
+# obligation whose authority is not yet ingested, so an obligation can never
+# quietly become uncitable.
+#
+# The provisions encoded here reflect the Biological Diversity Act, 2002 as
+# amended by the Biological Diversity (Amendment) Act, 2023 (No. 10 of 2023)
+# and the Biological Diversity Rules, 2024. The 2023 amendment moved the
+# section 6 trigger from "before applying for IPR" to "before grant of IPR",
+# and split Indian entities (registration) from section 3(2) entities
+# (approval). Encoding the pre-2023 rule would produce confidently wrong
+# advice, so the amendment status is recorded on each node.
+#
+# THIS IS DECISION SUPPORT, NOT LEGAL ADVICE. Every node must be signed off
+# by a registered patent agent or counsel before the system is relied on.
+# `review_status` tracks that: `verified` means a domain reviewer has checked
+# the node against the bare Act text; `draft` means nobody has yet.
+
+meta:
+  version: 1
+  last_reviewed: null
+  reviewer: null
+
+# ---------------------------------------------------------------------------
+# Authorities — who enforces an obligation, and where the form is filed.
+# ---------------------------------------------------------------------------
+authorities:
+  nba:
+    label: National Biodiversity Authority
+    jurisdiction: india
+  sbb:
+    label: State Biodiversity Board
+    jurisdiction: india
+  cgpdtm:
+    label: Office of the Controller General of Patents, Designs and Trade Marks
+    jurisdiction: india
+  cdsco:
+    label: Central Drugs Standard Control Organisation
+    jurisdiction: india
+  state_licensing_asu:
+    label: State Licensing Authority (Ayurveda, Siddha and Unani drugs)
+    jurisdiction: india
+  fssai:
+    label: Food Safety and Standards Authority of India
+    jurisdiction: india
+  wipo:
+    label: World Intellectual Property Organization
+    jurisdiction: international
+
+# ---------------------------------------------------------------------------
+# Regimes — the middle layer between a formulation and its duties.
+# ---------------------------------------------------------------------------
+regimes:
+  biodiversity_abs:
+    label: Access and Benefit Sharing (biodiversity)
+    description: >-
+      Controls access to Indian biological resources and associated traditional
+      knowledge, and conditions the grant of IP rights derived from them.
+  patents:
+    label: Patents and disclosure
+    description: >-
+      Patentability bars and disclosure duties specific to biological material
+      and traditional knowledge.
+  tk_defensive:
+    label: Defensive protection of traditional knowledge
+    description: >-
+      Prior-art and non-patentability exposure arising from documented
+      classical knowledge.
+  drugs_asu:
+    label: ASU and H drug regulation
+    description: >-
+      Licensing and approval of Ayurveda, Siddha, Unani and Homoeopathy drugs.
+  drugs_modern:
+    label: New drug and clinical trial regulation
+  food_safety:
+    label: Food safety (Ayurveda Aahar)
+  cosmetics:
+    label: Cosmetics regulation
+
+# ---------------------------------------------------------------------------
+# formulation --GOVERNED_BY--> regime
+#
+# Edge order matters only for presentation. A formulation reaching a regime
+# does not by itself create a duty: the obligation's own `trigger` still has
+# to be satisfied by the context. That two-stage narrowing is the point --
+# it is what a flat formulation -> act dict cannot express.
+# ---------------------------------------------------------------------------
+governed_by:
+  classical:      [biodiversity_abs, patents, tk_defensive, drugs_asu]
+  proprietary:    [biodiversity_abs, patents, tk_defensive, drugs_asu]
+  new_drug:       [biodiversity_abs, patents, drugs_modern]
+  phytopharmaceutical: [biodiversity_abs, patents, tk_defensive, drugs_modern]
+  aahar:          [biodiversity_abs, food_safety]
+  cosmetic:       [biodiversity_abs, patents, cosmetics]
+
+# ---------------------------------------------------------------------------
+# Deadlines — referenced by obligations, defined once here.
+#
+# `anchor` names the event the clock runs from. `offset_days` is signed:
+# negative means "before the anchor", which is how a blocking precondition
+# is expressed without a second node type.
+# ---------------------------------------------------------------------------
+deadlines:
+  before_access:
+    label: Before accessing the biological resource
+    anchor: resource_access
+    offset_days: -1
+  before_ipr_grant:
+    label: Before grant of the IP right
+    anchor: ipr_grant
+    offset_days: -1
+  before_commercialisation:
+    label: Before commercial utilisation
+    anchor: commercialisation
+    offset_days: -1
+  at_filing:
+    label: At the time of filing the complete specification
+    anchor: ipr_filing
+    offset_days: 0
+  within_45d_of_grant:
+    label: Within 45 days of grant of the IP right
+    anchor: ipr_grant
+    offset_days: 45
+  before_manufacture:
+    label: Before commencing manufacture
+    anchor: manufacture
+    offset_days: -1
+
+# ---------------------------------------------------------------------------
+# Exemptions — suppress an obligation when their own trigger fires.
+#
+# Modelled as first-class nodes rather than as negated conditions inside an
+# obligation, because an exemption has its own legal basis that has to be
+# cited when it is relied on. "You do not owe benefit sharing" is an answer
+# that needs a citation just as much as "you do".
+# ---------------------------------------------------------------------------
+exemptions:
+  bda_cultivated_medicinal_plants:
+    label: Cultivated medicinal plants and their products
+    legal_basis:
+      act_name: "The Biological Diversity Act, 2002"
+      section: "Section 40"
+    note: >-
+      The 2023 amendment exempts registered AYUSH practitioners and users of
+      codified traditional knowledge from benefit sharing with local
+      communities in respect of cultivated medicinal plants and their
+      products. Scope is narrower than it is often read to be: it does not
+      switch off the section 6 IPR obligations.
+    review_status: draft
+    suppresses: [bda_s7_sbb_intimation]
+    trigger:
+      all:
+        - field: resource_cultivation
+          equals: cultivated
+        - any:
+            - field: practitioner_is_registered_ayush
+              equals: true
+            - field: uses_codified_tk
+              equals: true
+
+  bda_resource_not_from_india:
+    label: Biological resource not accessed from India
+    legal_basis:
+      act_name: "The Biological Diversity Act, 2002"
+      section: "Section 2(a)"
+    note: >-
+      The Act bites on resources occurring in or obtained from India. A
+      resource sourced entirely outside India does not engage sections 3, 6
+      or 7, though the Nagoya obligations of the source country may apply.
+    review_status: draft
+    suppresses:
+      - bda_s3_prior_approval
+      - bda_s7_sbb_intimation
+      - bda_s6_nba_approval_before_grant
+      - bda_s6_1a_nba_registration
+      - bda_s6_1b_approval_before_commercialisation
+      - bda_rule16_notify_grant
+    trigger:
+      all:
+        - field: resource_origin
+          equals: outside_india
+
+# ---------------------------------------------------------------------------
+# Obligations — regime --IMPOSES--> obligation.
+#
+# `trigger` is a declarative predicate tree (all / any / field-equals /
+# field-in). It is deliberately NOT a Python expression: the graph is data,
+# and eval() on a domain-editable file is an obvious way to lose.
+#
+# `blocks_grant` marks an obligation whose breach prevents or unwinds the
+# grant of the IP right, as opposed to one that merely attracts a penalty.
+# That distinction drives severity in the ABS report.
+# ---------------------------------------------------------------------------
+obligations:
+
+  # -- Biodiversity: access ------------------------------------------------
+  bda_s3_prior_approval:
+    regime: biodiversity_abs
+    label: Obtain prior approval of the NBA before accessing the biological resource
+    legal_basis:
+      act_name: "The Biological Diversity Act, 2002"
+      section: "Section 3"
+    authority: nba
+    deadline: before_access
+    form: "Form A"
+    blocks_grant: false
+    severity: blocking
+    review_status: draft
+    amendment_note: >-
+      Section 3(2)(c)(ii) as amended in 2023 brings only foreign-CONTROLLED
+      Indian companies within the foreign category. An Indian company with
+      some foreign shareholding but Indian control now falls under section 7
+      instead, which is a materially lighter path.
+    rationale: >-
+      Non-citizens, non-resident citizens and foreign-controlled bodies
+      corporate cannot access a biological resource occurring in India for
+      research or commercial utilisation without prior NBA approval.
+    trigger:
+      all:
+        - field: applicant_category
+          in: [foreign_national, non_resident_indian, foreign_controlled_entity]
+        - field: resource_origin
+          equals: india
+
+  bda_s7_sbb_intimation:
+    regime: biodiversity_abs
+    label: Give prior intimation to the State Biodiversity Board
+    legal_basis:
+      act_name: "The Biological Diversity Act, 2002"
+      section: "Section 7"
+    authority: sbb
+    deadline: before_access
+    form: "Form I"
+    blocks_grant: false
+    severity: mandatory
+    review_status: draft
+    rationale: >-
+      Indian citizens and Indian entities must give prior intimation to the
+      SBB of the State in which the resource occurs before accessing it for
+      commercial utilisation.
+    trigger:
+      all:
+        - field: applicant_category
+          in: [indian_individual, indian_entity]
+        - field: resource_origin
+          equals: india
+        - field: intends_commercialisation
+          equals: true
+
+  # -- Biodiversity: IP ----------------------------------------------------
+  bda_s6_nba_approval_before_grant:
+    regime: biodiversity_abs
+    label: Obtain prior approval of the NBA before grant of the IP right
+    legal_basis:
+      act_name: "The Biological Diversity Act, 2002"
+      section: "Section 6"
+    authority: nba
+    deadline: before_ipr_grant
+    form: "Form 7 (Biological Diversity Rules, 2024, Rule 16)"
+    blocks_grant: true
+    severity: blocking
+    review_status: draft
+    amendment_note: >-
+      Pre-2023 this approval was required BEFORE FILING the application.
+      Since the 2023 amendment it is required before GRANT. Advice generated
+      against the unamended section will tell an applicant they are already
+      in breach when they are not.
+    rationale: >-
+      A section 3(2) person seeking IPR anywhere in the world for an invention
+      based on research or information on a biological resource accessed from
+      India requires NBA approval before the right is granted.
+    trigger:
+      all:
+        - field: applicant_category
+          in: [foreign_national, non_resident_indian, foreign_controlled_entity]
+        - field: seeking_ipr
+          equals: true
+        - field: resource_origin
+          equals: india
+
+  bda_s6_1a_nba_registration:
+    regime: biodiversity_abs
+    label: Register with the NBA before grant of the IP right
+    legal_basis:
+      act_name: "The Biological Diversity Act, 2002"
+      section: "Section 6(1A)"
+    authority: nba
+    deadline: before_ipr_grant
+    form: "Registration under Rule 16, Biological Diversity Rules, 2024"
+    blocks_grant: true
+    severity: mandatory
+    review_status: draft
+    amendment_note: >-
+      Introduced by the 2023 amendment. This is REGISTRATION, not approval --
+      the distinction is the main relief the amendment gave Indian applicants,
+      and conflating the two reintroduces a delay the law removed.
+    rationale: >-
+      An Indian person covered by section 7 applying for IPR based on Indian
+      biological resources or associated traditional knowledge must register
+      with the NBA before grant.
+    trigger:
+      all:
+        - field: applicant_category
+          in: [indian_individual, indian_entity]
+        - field: seeking_ipr
+          equals: true
+        - field: resource_origin
+          equals: india
+
+  bda_s6_1b_approval_before_commercialisation:
+    regime: biodiversity_abs
+    label: Obtain NBA approval before commercialising the granted IP right
+    legal_basis:
+      act_name: "The Biological Diversity Act, 2002"
+      section: "Section 6(1B)"
+    authority: nba
+    deadline: before_commercialisation
+    blocks_grant: false
+    severity: mandatory
+    review_status: draft
+    rationale: >-
+      A section 7 person who has already obtained an IP right must obtain NBA
+      approval at the time of commercialisation. Registration before grant
+      does not discharge this.
+    trigger:
+      all:
+        - field: applicant_category
+          in: [indian_individual, indian_entity]
+        - field: ipr_already_granted
+          equals: true
+        - field: intends_commercialisation
+          equals: true
+
+  bda_rule16_notify_grant:
+    regime: biodiversity_abs
+    label: Notify the NBA within 45 days of grant of the IP right
+    legal_basis:
+      act_name: "The Biological Diversity Rules, 2024"
+      section: "Rule 16"
+    authority: nba
+    deadline: within_45d_of_grant
+    blocks_grant: false
+    severity: mandatory
+    review_status: draft
+    rationale: >-
+      Post-grant notification duty under the 2024 Rules. Easily missed
+      because it falls after the point most applicants consider the matter
+      closed.
+    trigger:
+      all:
+        - field: seeking_ipr
+          equals: true
+        - field: resource_origin
+          equals: india
+
+  # -- Patents: disclosure -------------------------------------------------
+  patents_s10_disclose_source:
+    regime: patents
+    label: Disclose the source and geographical origin of the biological material
+    legal_basis:
+      act_name: "The Patents Act, 1970"
+      section: "Section 10"
+    authority: cgpdtm
+    deadline: at_filing
+    form: "Complete specification; declaration in Form 1"
+    blocks_grant: true
+    severity: blocking
+    review_status: draft
+    rationale: >-
+      Section 10(4)(d)(ii)(D) requires the complete specification to disclose
+      the source and geographical origin of any biological material used in
+      the invention.
+    linked_risk: >-
+      Non-disclosure or wrongful mention of source is a ground of pre-grant
+      and post-grant opposition under section 25 and of revocation under
+      section 64.
+    trigger:
+      all:
+        - field: seeking_ipr
+          equals: true
+        - field: uses_biological_material
+          equals: true
+
+  patents_s3p_tk_bar:
+    regime: tk_defensive
+    label: Assess the section 3(p) traditional-knowledge bar before filing
+    legal_basis:
+      act_name: "The Patents Act, 1970"
+      section: "Section 3"
+    authority: cgpdtm
+    deadline: at_filing
+    blocks_grant: true
+    severity: blocking
+    review_status: draft
+    rationale: >-
+      Section 3(p) excludes from patentability an invention which in effect is
+      traditional knowledge, or an aggregation or duplication of known
+      properties of a traditionally known component. This is the provision
+      TKDL prior art is normally cited against.
+    probe: tkdl
+    trigger:
+      all:
+        - field: seeking_ipr
+          equals: true
+        - field: formulation_type
+          in: [classical, proprietary, phytopharmaceutical]
+
+  patents_s3e_admixture:
+    regime: patents
+    label: Assess the section 3(e) mere-admixture objection
+    legal_basis:
+      act_name: "The Patents Act, 1970"
+      section: "Section 3"
+    authority: cgpdtm
+    deadline: at_filing
+    blocks_grant: true
+    severity: advisory
+    review_status: draft
+    rationale: >-
+      Section 3(e) excludes a substance obtained by mere admixture resulting
+      only in aggregation of the properties of its components. Multi-herb
+      formulations attract this routinely; synergy evidence beyond additive
+      effect is the usual answer.
+    trigger:
+      all:
+        - field: seeking_ipr
+          equals: true
+        - field: formulation_type
+          in: [classical, proprietary, phytopharmaceutical, new_drug]
+
+  gratk_disclosure:
+    regime: patents
+    label: Disclose genetic resources and associated traditional knowledge
+    legal_basis:
+      act_name: "WIPO Treaty on Intellectual Property, Genetic Resources and Associated Traditional Knowledge, 2024"
+      section: "Article 3"
+    authority: wipo
+    deadline: at_filing
+    blocks_grant: false
+    severity: advisory
+    review_status: draft
+    rationale: >-
+      Where the claimed invention is based on genetic resources or associated
+      traditional knowledge, the treaty requires disclosure of the country of
+      origin or source. Relevant to foreign filings in contracting parties.
+    trigger:
+      all:
+        - field: seeking_ipr
+          equals: true
+        - field: uses_biological_material
+          equals: true
+
+  # -- Drugs and food ------------------------------------------------------
+  asu_manufacturing_licence:
+    regime: drugs_asu
+    label: Obtain an ASU drug manufacturing licence
+    legal_basis:
+      act_name: "The Drugs and Cosmetics Act, 1940"
+      section: "Section 33EEC"
+    authority: state_licensing_asu
+    deadline: before_manufacture
+    form: "Form 24-D / Form 25-D"
+    blocks_grant: false
+    severity: mandatory
+    review_status: draft
+    trigger:
+      all:
+        - field: formulation_type
+          in: [classical, proprietary]
+        - field: intends_commercialisation
+          equals: true
+
+  phytopharma_appendix_ib:
+    regime: drugs_modern
+    label: Meet the phytopharmaceutical data requirements
+    legal_basis:
+      act_name: "The Drugs and Cosmetics Rules, 1945"
+      section: "Appendix I-B"
+    authority: cdsco
+    deadline: before_manufacture
+    blocks_grant: false
+    severity: mandatory
+    review_status: draft
+    trigger:
+      all:
+        - field: formulation_type
+          equals: phytopharmaceutical
+
+  fssai_ayurveda_aahar:
+    regime: food_safety
+    label: Comply with the Ayurveda Aahar regulations
+    legal_basis:
+      act_name: "Food Safety and Standards (Ayurveda Aahar) Regulations, 2022"
+      section: "Regulation 4"
+    authority: fssai
+    deadline: before_manufacture
+    blocks_grant: false
+    severity: mandatory
+    review_status: draft
+    trigger:
+      all:
+        - field: formulation_type
+          equals: aahar
+
+  cosmetics_licence:
+    regime: cosmetics
+    label: Obtain a cosmetics manufacturing licence
+    legal_basis:
+      act_name: "The Cosmetics Rules, 2020"
+      section: "Rule 21"
+    authority: cdsco
+    deadline: before_manufacture
+    blocks_grant: false
+    severity: mandatory
+    review_status: draft
+    trigger:
+      all:
+        - field: formulation_type
+          equals: cosmetic
+
+# ---------------------------------------------------------------------------
+# obligation --PRECEDES--> obligation
+#
+# Sequencing, not just a set. "You owe A and B" is much less useful than
+# "B cannot be satisfied until A is", which is what turns the output into
+# an ordered plan.
+# ---------------------------------------------------------------------------
+precedes:
+  bda_s3_prior_approval: [bda_s6_nba_approval_before_grant]
+  bda_s7_sbb_intimation: [bda_s6_1a_nba_registration]
+  bda_s6_nba_approval_before_grant: [bda_rule16_notify_grant]
+  bda_s6_1a_nba_registration:
+    - bda_rule16_notify_grant
+    - bda_s6_1b_approval_before_commercialisation
+  patents_s3p_tk_bar: [patents_s10_disclose_source]

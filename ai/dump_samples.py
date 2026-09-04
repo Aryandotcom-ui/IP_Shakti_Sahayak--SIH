@@ -7,8 +7,8 @@ corpus has one. Whoever is building retrieval needs to see a treaty
 article and a split section, not five consecutive sections of the same
 Act — the edge cases are where their filters will break.
 
-    python scripts/dump_samples.py data/pdfs --manifest manifests/corpus.yaml
-    python scripts/dump_samples.py --from-json build/chunks.json -n 5
+    python -m ai.dump_samples data/pdfs --manifest ai/corpus.yaml
+    python -m ai.dump_samples --from-json build/chunks.json -n 5
 """
 
 from __future__ import annotations

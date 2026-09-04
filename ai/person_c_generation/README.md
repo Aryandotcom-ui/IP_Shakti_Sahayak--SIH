@@ -102,8 +102,13 @@ No changes needed inside `generate_answer()` itself.
   confirm the plumbing (prompt formatting, JSON parsing, citation checks)
   works.
 - The real path (`call_llm`) uses the standard `anthropic` Python SDK and
-  reads `ANTHROPIC_API_KEY` from the environment. Set `LLM_MODEL` to
-  override the default model string.
+  reads `ANTHROPIC_API_KEY` from the environment by default. Set
+  `LLM_MODEL` to override the default model string. A caller that
+  already has a key configured elsewhere (the backend adapter, from its
+  own settings) can pass `generate_answer(..., api_key=...)` /
+  `call_llm(..., api_key=...)` directly — an explicit key takes
+  precedence over the environment variable, which stays the fallback so
+  `python generate.py` works exactly as documented above with no change.
 - `parse_llm_response` strips ```` ```json ```` fences and falls back to
   regex-extracting the first `{...}` block, in case the model adds stray
   preamble text despite the instruction not to.
