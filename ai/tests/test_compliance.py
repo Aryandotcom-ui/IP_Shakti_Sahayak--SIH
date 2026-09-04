@@ -315,11 +315,37 @@ def test_prior_art_skipped_when_no_terms_supplied():
 # Citability
 # ---------------------------------------------------------------------------
 
-def test_uncitable_acts_are_reported_when_corpus_is_incomplete():
+def test_uncitable_acts_are_reported_when_corpus_is_incomplete(tmp_path):
     """An obligation citing a not-yet-ingested act still fires — the duty
     exists in law — but the caller must be able to tell it cannot be backed
-    by a retrieved chunk."""
-    assessor = ABSAssessor(corpus_path=str(CORPUS))
+    by a retrieved chunk.
+
+    Built against a purpose-made manifest rather than the real corpus.yaml.
+    The original version asserted that the Biological Diversity Act was
+    uncitable, which was only true while the corpus was empty; it broke the
+    moment that Act was actually ingested. Pinning the mechanism instead of
+    the corpus's current contents keeps this test honest as documents land.
+    """
+    manifest = tmp_path / "corpus.yaml"
+    manifest.write_text(
+        "documents:\n"
+        "  - file: patents-act-1970.pdf\n"
+        "    status: ingested\n"
+        "    jurisdiction: india\n"
+        "    instrument_type: statute\n"
+        '    act_name: "The Patents Act, 1970"\n'
+        '    effective_date: "1972-04-20"\n'
+        '    source_url: ""\n'
+        "  - file: biological-diversity-act-2002.pdf\n"
+        "    status: pending\n"
+        "    jurisdiction: india\n"
+        "    instrument_type: statute\n"
+        '    act_name: "The Biological Diversity Act, 2002"\n'
+        '    effective_date: "2003-10-01"\n'
+        '    source_url: ""\n',
+        encoding="utf-8",
+    )
+    assessor = ABSAssessor(corpus_path=str(manifest))
     report = assessor.assess(
         ComplianceContext.from_classification(
             Classification("classical"),
@@ -330,6 +356,24 @@ def test_uncitable_acts_are_reported_when_corpus_is_incomplete():
     )
     assert "The Biological Diversity Act, 2002" in report.uncitable_acts
     assert "The Patents Act, 1970" not in report.uncitable_acts
+
+
+def test_nothing_is_uncitable_once_the_real_corpus_holds_every_cited_act():
+    """The complement of the test above, against the live manifest: every act
+    the graph cites is now ingested, so an assessment reports no uncitable
+    acts. This is what makes the obligations quotable rather than merely
+    asserted — if a document is ever removed or reverted to `pending`, this
+    fails and says so."""
+    assessor = ABSAssessor(corpus_path=str(CORPUS))
+    report = assessor.assess(
+        ComplianceContext.from_classification(
+            Classification("classical"),
+            applicant_category="foreign_national",
+            resource_origin="india",
+            seeking_ipr=True,
+        )
+    )
+    assert report.uncitable_acts == []
 
 
 def test_context_rejects_unknown_fields():
